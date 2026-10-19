@@ -128,7 +128,7 @@ function createGame({ joinUrl, speed = 1, env = {} }) {
       turn: game.turn, round: game.round, mode: game.mode, copasToWin: game.copasToWin, rounds: game.rounds,
       maxRounds: game.mode === 'rondas' ? game.rounds : MAX_ROUNDS, lastRounds: game.lastRounds,
       copaSpace: game.copaSpace, dice: game.dice, message: game.message, traps: game.traps,
-      decision: game.decision, mg: game.mg, mgPick: game.mgPick, results: game.results, bonus: game.bonus,
+      paused: !!game.paused, decision: game.decision, mg: game.mg, mgPick: game.mgPick, results: game.results, bonus: game.bonus,
       news: game.news, gift: game.gift,
       standings: game.standings, fx: game.fx, host: game.host, bank: game.bank, orderRolls: game.orderRolls,
       board: game.board, boards: BOARD_LIST, characters: CHARACTERS, copaPrice: game.copaPrice, items: ITEMS,
@@ -146,9 +146,27 @@ function createGame({ joinUrl, speed = 1, env = {} }) {
   // Algunas frases salen solo a veces, para que Sifón no hable todo el tiempo
   const maybeSay = (prob, text, mood) => { if (Math.random() < prob) say(text, mood); };
 
+  // Reloj del juego: no corre mientras está en pausa (tecla P en la compu)
+  let pausedAt = 0, pausedTotal = 0;
+  const gameNow = () => (game.paused ? pausedAt : Date.now()) - pausedTotal;
+  function setPaused(on) {
+    if (!!game.paused === on || game.phase === 'lobby' || game.phase === 'end') return;
+    if (on) pausedAt = Date.now(); else pausedTotal += Date.now() - pausedAt;
+    game.paused = on;
+    broadcast();
+  }
+
   function sleep(ms) {
-    const id = runId;
-    return new Promise((resolve, reject) => setTimeout(() => (id === runId ? resolve() : reject(ABORT)), ms / SPEED));
+    const id = runId, end = gameNow() + ms / SPEED;
+    return new Promise((resolve, reject) => {
+      const tick = () => {
+        if (id !== runId) return reject(ABORT);
+        const left = end - gameNow();
+        if (left <= 0) return resolve();
+        setTimeout(tick, game.paused ? 200 : Math.min(left, 250));
+      };
+      setTimeout(tick, Math.min(ms / SPEED, 250));
+    });
   }
 
   // Espera la decisión de un jugador. Bots y jugadores desconectados deciden solos.
@@ -164,8 +182,13 @@ function createGame({ joinUrl, speed = 1, env = {} }) {
         id === runId ? resolve(v) : reject(ABORT);
       };
       pending = p;
-      p.timer = setTimeout(() => p.done(auto()), (player.bot ? 1100 : timeoutMs) / SPEED);
-      p.check = setInterval(() => { if (!player.bot && !player.connected && ++p.offline >= 8) p.done(auto()); }, 500);
+      const t0 = gameNow(), limit = (player.bot ? 1100 : timeoutMs) / SPEED;
+      let ticks = 0;
+      p.check = setInterval(() => {
+        if (game.paused) return;
+        if (gameNow() - t0 >= limit) { p.done(auto()); return; }
+        if (++ticks % 5 === 0 && !player.bot && !player.connected && ++p.offline >= 8) p.done(auto());
+      }, 100);
       game.decision = { playerId: player.id, kind, ...extra };
       broadcast();
     });
@@ -253,11 +276,11 @@ function createGame({ joinUrl, speed = 1, env = {} }) {
     game.orderRolls = {};
     game.message = '¡Tiren el dado para ver quién arranca!';
     broadcast();
-    const t0 = Date.now();
+    const t0 = gameNow();
     const roll = (p) => { game.orderRolls[p.id] = 1 + Math.floor(Math.random() * 10); broadcast(); };
     for (;;) {
       await sleep(250);
-      const waited = (Date.now() - t0) * SPEED;
+      const waited = (gameNow() - t0) * SPEED;
       game.players.forEach((p, i) => { if ((p.bot || !p.connected) && !(p.id in game.orderRolls) && waited > 1500 + i * 600) roll(p); });
       if (game.players.every((p) => p.id in game.orderRolls)) break;
       if (waited > 15000) { game.players.forEach((p) => { if (!(p.id in game.orderRolls)) roll(p); }); break; }
@@ -918,10 +941,10 @@ function createGame({ joinUrl, speed = 1, env = {} }) {
     game.results = null;
     game.message = `Minijuego: ${meta.title}`;
     broadcast();
-    const t0 = Date.now();
+    const t0 = gameNow();
     for (;;) {
       await sleep(250);
-      const waited = (Date.now() - t0) * SPEED;
+      const waited = (gameNow() - t0) * SPEED;
       const humans = participants.filter((p) => !p.bot && p.connected);
       const allReady = humans.every((p) => game.mg.ready.includes(p.id));
       if ((allReady && waited > 2500) || waited > 20000) break;
@@ -939,6 +962,7 @@ function createGame({ joinUrl, speed = 1, env = {} }) {
         const now = Date.now();
         const dt = Math.min(0.05, (now - last) / 1000);
         last = now;
+        if (game.paused) return; // en pausa el minijuego queda congelado
         for (let k = 0; k < SPEED && !mgSim.done; k++) {
           for (const p of participants) if (p.bot || !p.connected) mgSim.bot(p.id, dt);
           mgSim.step(dt);
@@ -1032,12 +1056,12 @@ function createGame({ joinUrl, speed = 1, env = {} }) {
   }
   function waitPick() {
     return new Promise((resolve, reject) => {
-      const id = runId, t0 = Date.now();
+      const id = runId, t0 = gameNow();
       const t = setInterval(() => {
         if (id !== runId) { clearInterval(t); pickWait = null; reject(ABORT); return; }
         // Si no queda nadie con el celu conectado ni la compu abierta, siguen solos los bots
         const humans = game.players.some((p) => !p.bot && p.connected);
-        if (!humans && !hosts.size && (Date.now() - t0) * SPEED > 6000) pickWait(randomPick());
+        if (!humans && !hosts.size && (gameNow() - t0) * SPEED > 6000) pickWait(randomPick());
       }, 500);
       pickWait = (v) => { clearInterval(t); pickWait = null; resolve(v); };
     });
@@ -1119,6 +1143,7 @@ function createGame({ joinUrl, speed = 1, env = {} }) {
     pickWait = null;
     mgSim = null;
     game.phase = 'lobby';
+    game.paused = false;
     game.players = game.players.filter((p) => p.bot || p.connected);
     for (const p of game.players) { resetPlayer(p); p.ready = false; }
     Object.assign(game, { bank: 0, orderRolls: null, turn: 0, round: 0, dice: null, message: '', decision: null, mg: null,
@@ -1233,6 +1258,7 @@ function createGame({ joinUrl, speed = 1, env = {} }) {
         break;
       case 'endMinis': if (host && game.phase === 'mgPick' && pickWait) pickWait({ end: true }); break;
       case 'again': if (host && game.phase === 'end') backToLobby(); break;
+      case 'pause': if (host) setPaused(!game.paused); break;
     }
   }
 

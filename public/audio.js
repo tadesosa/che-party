@@ -6,12 +6,22 @@ let musicMode = null, nextNote = 0, step = 0, timer = null;
 
 export function audioReady() { return !!ctx && ctx.state === 'running'; }
 
+// Tecla M en la tele: silencio (se recuerda para la próxima)
+let muted = false;
+try { muted = localStorage.getItem('lp_muted') === '1'; } catch { /* sin storage */ }
+export function isMuted() { return muted; }
+export function setMuted(m) {
+  muted = m;
+  try { localStorage.setItem('lp_muted', m ? '1' : '0'); } catch { /* sin storage */ }
+  if (master) master.gain.setTargetAtTime(m ? 0 : 0.8, ctx.currentTime, 0.05);
+}
+
 export function unlockAudio() {
   if (!ctx) {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
-    master = ctx.createGain(); master.gain.value = 0.8; master.connect(ctx.destination);
+    master = ctx.createGain(); master.gain.value = muted ? 0 : 0.8; master.connect(ctx.destination);
     musicGain = ctx.createGain(); musicGain.gain.value = 0.32; musicGain.connect(master);
     sfxGain = ctx.createGain(); sfxGain.gain.value = 0.7; sfxGain.connect(master);
   }

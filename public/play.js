@@ -139,6 +139,7 @@ function render() {
   const me = S.players.find((p) => p.id === myId);
   const CH = Object.fromEntries(S.characters.map((c) => [c.key, c]));
   $('top').classList.toggle('hidden', !me);
+  $('pausePhone').classList.toggle('hidden', !S.paused || !me);
   if (!me) {
     $('name').value = $('name').value || myName;
     showScreen('sJoin');

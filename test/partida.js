@@ -8,7 +8,8 @@ tv.on('open', () => tv.send(JSON.stringify({ t: 'hello', role: 'host' })));
 tv.on('message', (d) => { const m = JSON.parse(d); if (m.t === 'error') console.log('ERROR TELE:', m.msg); });
 let me = null, lastPhase = null, setup = false, again = false, lastPick = -1;
 const send = (m) => ws.send(JSON.stringify(m));
-const host = (m) => tv.send(JSON.stringify(m));
+// Si la conexión de la compu todavía no abrió, el mensaje sale apenas abra
+const host = (m) => (tv.readyState === 1 ? tv.send(JSON.stringify(m)) : tv.once('open', () => tv.send(JSON.stringify(m))));
 const t0 = Date.now();
 ws.on('open', () => send({ t: 'join', name: 'Tester' }));
 ws.on('message', (d) => {

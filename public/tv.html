@@ -26,6 +26,8 @@
     <div class="col">
       <h2>Tablero</h2>
       <div id="tvBoards" class="board-cards"></div>
+    </div>
+    <div class="col col-mode">
       <h2>Modo</h2>
       <div id="tvModes" class="seg">
         <button data-mode="rondas">⏱️ Por rondas</button><button data-mode="copas">🏆 Por Copas</button><button data-mode="minis">🎮 Solo minijuegos</button>
@@ -34,6 +36,7 @@
       <p id="tvModeHint" class="hint"></p>
       <button id="tvStart" class="tvbtn start">¡Empezar!</button>
       <p id="tvStartHint" class="hint"></p>
+      <p class="hint keys"><kbd>F</kbd> pantalla completa · <kbd>M</kbd> silencio · <kbd>P</kbd> pausa</p>
     </div>
   </div>
 </div>
@@ -119,6 +122,7 @@
 <div id="wipe"><div class="sun">☀</div></div>
 <div id="soundHint">🔊 Tocá la pantalla o una tecla para activar el sonido</div>
 <div id="offline" class="hidden">Reconectando con el servidor…</div>
+<div id="pause" class="hidden"><div class="pause-box"><div class="pause-icon">⏸</div><h1>Pausa</h1><p>Tocá <kbd>P</kbd> o hacé clic para seguir</p></div></div>
 
 <script type="module" src="/tv.js"></script>
 </body>

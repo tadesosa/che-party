@@ -9,9 +9,10 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { makeCharacter, animateChar, makeCopa, makeChancla, makeLabel } from './models.js';
 import { makeBus, makeTaxi, makeCloud } from './props.js';
 import { buildBoard3D } from './board3d.js';
+import { makeOcclusion } from './occlusion.js';
 import { loadKit } from './kit.js';
 import { portraitURL } from './portrait.js';
-import { sfx, music, unlockAudio, audioReady } from './audio.js';
+import { sfx, music, unlockAudio, audioReady, setMuted, isMuted } from './audio.js';
 import { createHostStage } from './host3d.js';
 import sumo from './mg/sumo.js';
 import globo from './mg/globo.js';
@@ -202,6 +203,7 @@ let S = null;
 let CH = {};
 let lastFx = 0;
 let B = null; // tablero 3D
+let occ = null; // lo que tapa a la cámara se vuelve transparente
 const pieces = new Map();
 let copaMesh = null;
 let copaFly = null; // { from, to, t, dur }: la Copa volando a su casilla nueva
@@ -223,6 +225,8 @@ function ensureBoard() {
 
 function buildBoard() {
   B = buildBoard3D(boardGroup, S.board);
+  occ = makeOcclusion(B.root);
+  window.__lp.occ = occ;
   copaMesh = makeCopa();
   copaMesh.scale.setScalar(1.0);
   const glow = new THREE.PointLight('#ffd34d', 10, 8);
@@ -231,6 +235,36 @@ function buildBoard() {
   beam.position.y = 6; copaMesh.add(beam);
   copaMesh.traverse((m) => { if (m.isMesh && m.material.color && m !== beam) { m.material = m.material.clone(); m.material.emissive = new THREE.Color('#5a4200'); } });
   boardGroup.add(copaMesh);
+}
+
+// ---------- Podio del final: un escenario entre las nubes, con los tres primeros ----------
+const PODIUM = new THREE.Vector3(0, 44, -24);
+const PODIUM_STEPS = [[0, 2.1], [-2.7, 1.45], [2.7, 0.95]]; // [x, alto] del 1°, 2° y 3°
+let podium = null, podiumConfetti = 0;
+function makePodium() {
+  const g = new THREE.Group();
+  const grass = new THREE.Mesh(new THREE.CylinderGeometry(7.5, 6.2, 1.4, 48), new THREE.MeshStandardMaterial({ color: '#5aa83f', roughness: 0.9 }));
+  grass.position.y = -0.7; grass.receiveShadow = true; g.add(grass);
+  const dirt = new THREE.Mesh(new THREE.ConeGeometry(6.2, 4.5, 48), new THREE.MeshStandardMaterial({ color: '#8a6a48', roughness: 1 }));
+  dirt.rotation.x = Math.PI; dirt.position.y = -3.65; g.add(dirt);
+  const colors = ['#f6b40e', '#d5dde8', '#d38b4f'];
+  PODIUM_STEPS.forEach(([x, h], i) => {
+    const block = new THREE.Mesh(new THREE.BoxGeometry(2.5, h, 2.5), new THREE.MeshPhysicalMaterial({ color: colors[i], roughness: 0.35, metalness: 0.25, clearcoat: 0.6 }));
+    block.position.set(x, h / 2, 0); block.castShadow = block.receiveShadow = true; g.add(block);
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.14, 2.6), new THREE.MeshStandardMaterial({ color: '#1b2a4a' }));
+    trim.position.set(x, h, 0); g.add(trim);
+    const n = makeLabel(String(i + 1), { size: 0.75, bg: colors[i] });
+    n.position.set(x, h / 2, 1.4); g.add(n);
+  });
+  g.position.copy(PODIUM);
+  return g;
+}
+// Dónde para cada uno en el final: los tres primeros en el podio, el resto abajo, adelante
+function podiumSpot(place) {
+  if (place < 3) { const [x, h] = PODIUM_STEPS[place]; return new THREE.Vector3(PODIUM.x + x, PODIUM.y + h, PODIUM.z); }
+  // Del 4° en adelante, al costado del podio (sin tapar los escalones)
+  const [x, z] = [[-5.4, 0.4], [5.4, 0.4], [-4.6, 2.8], [4.6, 2.8]][(place - 3) % 4];
+  return new THREE.Vector3(PODIUM.x + x, PODIUM.y, PODIUM.z + z);
 }
 
 // Baches (trampas de los jugadores) en las casillas
@@ -268,11 +302,12 @@ function ensurePiece(p) {
   if (pc && pc.char === p.char) return pc;
   if (pc) boardGroup.remove(pc.g);
   const g = makeCharacter(p.char, CH[p.char].color);
-  addLabel(g, p.name);
+  const label = addLabel(g, p.name);
+  label.userData.baseY = label.position.y;
   const start = B.pos(p.pos);
   g.position.copy(start);
   boardGroup.add(g);
-  pc = { g, char: p.char, from: start.clone(), to: start.clone(), t: 1, land: 0, hidden: false, cheer: 0 };
+  pc = { g, label, char: p.char, from: start.clone(), to: start.clone(), t: 1, land: 0, hidden: false, cheer: 0 };
   pieces.set(p.id, pc);
   return pc;
 }
@@ -289,11 +324,20 @@ function updatePieceTargets() {
     const group = byPos.get(p.pos);
     const base = B.pos(p.pos);
     const isMover = BOARD_PHASES.includes(S.phase) && mover && mover.id === p.id && !['intro', 'order'].includes(S.phase);
+    const place = S.phase === 'end' && S.standings ? S.standings.findIndex((r) => r.id === p.id) : -1;
+    if (place >= 0) {
+      base.copy(podiumSpot(place));
+      pc.fly = null; pc.hidden = false; pc.label.position.y = pc.label.userData.baseY;
+      if (base.distanceTo(pc.to) > 0.01) { pc.from.copy(base); pc.to.copy(base); pc.t = 1; pc.g.position.copy(base); }
+      continue;
+    }
     if (group.length > 1 && !isMover) {
       const k = group.indexOf(p);
       const a = (k / group.length) * Math.PI * 2 + 0.6;
       base.x += Math.cos(a) * 0.9; base.z += Math.sin(a) * 0.9;
     }
+    // Si comparten casilla, cada nombre a otra altura para que no se pisen
+    pc.label.position.y = pc.label.userData.baseY + (group.length > 1 ? group.indexOf(p) * 0.55 : 0);
     if (pc.fly) { pc.to.copy(base); continue; }
     if (base.distanceTo(pc.to) > 0.01) {
       const far = base.distanceTo(pc.g.position) > 4.2;
@@ -703,7 +747,7 @@ function renderHud() {
   const ph = S.phase;
   const inMgView = currentScene !== 'board';
   show('lobby', ph === 'lobby');
-  show('hud', (BOARD_PHASES.includes(ph) || ph === 'end') && !inMgView);
+  show('hud', BOARD_PHASES.includes(ph) && !inMgView);
   show('banner', BOARD_PHASES.includes(ph) && !!S.message && !inMgView && ph !== 'order');
   show('dice', !!S.dice && S.dice.detail && BOARD_PHASES.includes(ph));
   show('orderPanel', ph === 'order' && !!S.orderRolls);
@@ -712,11 +756,12 @@ function renderHud() {
   if (ph !== 'minigame') show('countdown', false);
   show('results', ph === 'mgResults');
   show('end', ph === 'end');
+  show('pause', !!S.paused);
   show('bonusPanel', ph === 'bonus' && !!S.bonus);
   show('newsPanel', ph === 'news' && !!S.news);
   show('giftPanel', ph === 'gift' && !!S.gift);
   show('pickPanel', ph === 'mgPick');
-  if (ph === 'lobby' || ph === 'end') { $('host').classList.add('hidden'); hostVisible = false; }
+  if (ph === 'lobby') { $('host').classList.add('hidden'); hostVisible = false; }
 
   if (ph === 'lobby') renderLobby();
 
@@ -853,6 +898,7 @@ document.addEventListener('click', (e) => {
   else if (b.id === 'tvBotAdd') sendHost({ t: 'addBot' });
   else if (b.id === 'tvBotDel') sendHost({ t: 'removeBot' });
   else if (b.id === 'tvStart') {
+    if (S.players.length >= 2) goFullscreen();
     const waiting = S.players.filter((p) => !p.bot && p.connected && !p.ready);
     if (waiting.length && S.players.length >= 2 && confirm(`${waiting.map((p) => p.name).join(', ')} todavía no tocó LISTO. ¿Empezar igual?`)) sendHost({ t: 'start', force: true });
     else sendHost({ t: 'start' });
@@ -945,7 +991,54 @@ function showHost(h) {
     if (i >= h.text.length) { clearInterval(typeTimer); if (hostStage) hostStage.setTalking(false); }
   }, 32);
   clearTimeout(hostTimer);
-  hostTimer = setTimeout(() => { el.classList.add('out'); setTimeout(() => { if (el.classList.contains('out')) hostVisible = false; }, 450); }, Math.max(h.big ? 6000 : 4500, h.text.length * (h.big ? 80 : 70)));
+  hostTimer = setTimeout(hideHost, Math.max(h.big ? 6000 : 4500, h.text.length * (h.big ? 80 : 70)));
+  hostTurn = S.turn; hostAt = performance.now();
+}
+let hostTurn = -1, hostAt = 0;
+function hideHost() {
+  clearTimeout(hostTimer);
+  const el = $('host');
+  if (!hostVisible || el.classList.contains('out')) return;
+  el.classList.add('out');
+  setTimeout(() => { if (el.classList.contains('out')) hostVisible = false; }, 450);
+}
+// En pantallas chicas la burbuja de Sifón pisa los carteles del medio: el cartel se corre (a la derecha o para arriba)
+const DODGE = ['results', 'mgIntro', 'bonusPanel', 'end', 'giftPanel', 'orderPanel'];
+let dodgeT = 0;
+function dodgeHost(dt) {
+  dodgeT -= dt;
+  if (dodgeT > 0) return;
+  dodgeT = 0.2;
+  const host = $('host'), bubble = host.querySelector('.bubble');
+  const talking = hostVisible && !host.classList.contains('hidden') && !host.classList.contains('out');
+  // Sin transformaciones (la burbuja entra deslizándose): dónde va a quedar
+  const b = { left: host.offsetLeft + bubble.offsetLeft, top: host.offsetTop + bubble.offsetTop };
+  b.right = b.left + bubble.offsetWidth; b.bottom = b.top + bubble.offsetHeight;
+  const news = $('newsPanel').querySelector('.news-box');
+  for (const el of [...DODGE.map($), news]) {
+    const shown = el === news ? !$('newsPanel').classList.contains('hidden') : !el.classList.contains('hidden');
+    const [sx, sy] = (el.style.translate || '0px 0px').split(' ').map((v) => parseFloat(v) || 0);
+    let dx = 0, dy = 0;
+    if (shown && talking) {
+      // Lo que está corrido ahora mismo (a mitad de la transición también), para saber dónde estaría sin correrse
+      const [cx, cy] = (getComputedStyle(el).translate.replace('none', '0px') + ' 0px').split(' ').map((v) => parseFloat(v) || 0);
+      const r = el.getBoundingClientRect();
+      const o = { left: r.left - cx, right: r.right - cx, top: r.top - cy, bottom: r.bottom - cy };
+      if (b.right > o.left && b.left < o.right && b.bottom > o.top && b.top < o.bottom) {
+        const roomX = innerWidth - 12 - o.right;
+        const needX = b.right + 16 - o.left;
+        if (needX <= roomX) dx = needX;
+        else dy = -Math.min(o.bottom - b.top + 16, o.top - 8);
+      }
+    }
+    const want = `${Math.round(dx)}px ${Math.round(dy)}px`;
+    if (Math.abs(dx - sx) > 2 || Math.abs(dy - sy) > 2) el.style.translate = want;
+  }
+}
+
+// Si ya le toca a otro, lo que decía Sifón del turno anterior ya no corresponde
+function staleHost() {
+  if (hostVisible && S.turn !== hostTurn && performance.now() - hostAt > 1800 && BOARD_PHASES.includes(S.phase)) hideHost();
 }
 
 // ---------- Cambio de escena con transición ----------
@@ -996,6 +1089,7 @@ function applyState(st) {
   renderHud();
   handleFx(st.fx);
   showHost(st.host);
+  staleHost();
   B.showChoices(st.phase === 'path' && st.decision && st.decision.kind === 'path' ? st.decision.at : null);
   syncTraps(st.traps || []);
   B.setBank(st.bank || 0);
@@ -1023,6 +1117,26 @@ function wake() {
 }
 window.addEventListener('pointerdown', wake);
 window.addEventListener('keydown', wake);
+
+// ---------- Tele: pantalla completa, pantalla siempre prendida y silencio ----------
+// Se juega con los celus, así que la compu no recibe ni mouse ni teclado: sin esto Windows apaga la pantalla a mitad de partida
+let wakeLock = null;
+async function keepScreenOn() {
+  try { if ('wakeLock' in navigator && !wakeLock && document.visibilityState === 'visible') { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch { /* no se pudo */ }
+}
+keepScreenOn();
+window.addEventListener('pointerdown', keepScreenOn);
+document.addEventListener('visibilitychange', keepScreenOn);
+function goFullscreen() {
+  try { if (!document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); } catch { /* nada */ }
+}
+window.addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('input, textarea')) return;
+  if (e.key === 'm' || e.key === 'M') { const on = !isMuted(); setMuted(on); toast(on ? '🔇 Sonido apagado (M para prenderlo)' : '🔊 Sonido prendido'); }
+  else if (e.key === 'f' || e.key === 'F') { if (document.fullscreenElement) document.exitFullscreen(); else goFullscreen(); }
+  else if ((e.key === 'p' || e.key === 'P') && S && S.phase !== 'lobby' && S.phase !== 'end') sendHost({ t: 'pause' });
+});
+$('pause').addEventListener('click', () => sendHost({ t: 'pause' }));
 
 // ---------- Conexión ----------
 let ws = null;
@@ -1065,6 +1179,7 @@ const clock = new THREE.Clock();
 let diceSpinT = 0;
 let diceHit = 0;
 const tmpV = new THREE.Vector3();
+const UP1 = new THREE.Vector3(0, 1, 0);
 
 function updateBoard(dt, time) {
   const ph = S.phase;
@@ -1161,6 +1276,9 @@ function updateBoard(dt, time) {
   if (copaMesh && S.copaSpace >= 0) {
     const p = B.pos(S.copaSpace);
     const target = tmpV.set(p.x, p.y + 1.44 + Math.sin(time * 2) * 0.2, p.z);
+    // En el final, la Copa flota arriba del ganador
+    const champ = ph === 'end' && S.standings && S.standings[0] && pieces.get(S.standings[0].id);
+    if (champ) target.set(champ.g.position.x, champ.g.position.y + (champ.g.userData.top || 1.8) + 1.5 + Math.sin(time * 2) * 0.15, champ.g.position.z);
     if (copaFly) {
       copaFly.t += dt;
       const u = Math.min(1, copaFly.t / copaFly.dur);
@@ -1174,6 +1292,14 @@ function updateBoard(dt, time) {
     }
     copaMesh.rotation.y = time * 1.5;
     copaMesh.visible = ph !== 'lobby' && ph !== 'mgPick';
+  }
+  // Final: podio con papelitos sobre el ganador
+  if (ph === 'end' && !podium) { podium = makePodium(); scene.add(podium); }
+  if (podium) podium.visible = ph === 'end';
+  if (ph === 'end' && S.standings && S.standings[0]) {
+    podiumConfetti -= dt;
+    const w = pieces.get(S.standings[0].id);
+    if (podiumConfetti <= 0 && w) { podiumConfetti = 1.1; burst(w.g.position.clone().add(tmpV.set((Math.random() - 0.5) * 6, 5, 0)), 45, 4); }
   }
   B.update(dt, time);
   updateRides(dt);
@@ -1194,6 +1320,9 @@ function updateCamera(dt, time) {
     const a = time * 0.05;
     const r = Math.max(42, view.pos[2] + 6);
     camTarget.set(Math.sin(a) * r, 26, Math.cos(a) * r); camLook.lerp(tmpV.set(0, 2, 0), 0.05);
+  } else if (ph === 'end' && podium) {
+    // El podio queda a la izquierda: a la derecha va el cartel con la tabla
+    camTarget.set(PODIUM.x + 4.6, PODIUM.y + 5.2, PODIUM.z + 15); camLook.lerp(tmpV.set(PODIUM.x + 4.6, PODIUM.y + 1.9, PODIUM.z), 1 - Math.exp(-3 * dt));
   } else if (ph === 'copaMove' && copaMesh) {
     const c = copaMesh.position;
     camTarget.set(c.x * 0.9, c.y + 11.5, c.z * 0.9 + 12); camLook.lerp(tmpV.set(c.x, c.y - 0.5, c.z), 1 - Math.exp(-4 * dt));
@@ -1218,6 +1347,15 @@ function updateCamera(dt, time) {
   }
   camera.position.lerp(camTarget, 1 - Math.exp(-2.5 * dt));
   camera.lookAt(camLook);
+  if (occ) {
+    if (inMg || ph === 'lobby' || ph === 'end' || location.hash === '#vista') occ.reset();
+    else {
+      const mover = S.players[S.turn];
+      const others = [];
+      for (const [id, pc] of pieces) others.push({ o: pc.g, skip: !!mover && id === mover.id });
+      occ.update(dt, camera.position, tmpV.copy(camLook).add(UP1), others);
+    }
+  }
   sky.position.copy(camera.position);
   // La luz del sol sigue a la cámara para que las sombras se vean nítidas donde se mira
   sun.target.position.copy(camLook);
@@ -1262,6 +1400,7 @@ function frame() {
     updateCamera(Math.min(0.5, raw), time);
     if (mgKey) updateMg(Math.min(0.25, raw), time);
     if (S.phase === 'minigame') updateMgHud();
+    dodgeHost(raw);
   }
   for (const c of clouds) { c.position.x += c.userData.v * dt; if (c.position.x > 120) c.position.x = -120; }
 

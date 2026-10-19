@@ -13,7 +13,10 @@ Funciona **sin internet**: solo hace falta que la PC y los celus estén en el mi
    - Si Windows muestra "Windows protegió su PC", tocá **Más información → Ejecutar de todas formas** (pasa con cualquier programa que no está firmado).
    - Si Windows pregunta por el firewall, tocá **Permitir** en redes privadas (si no, los celus no pueden entrar).
    - **No cierres la ventana negra** mientras juegan: es el servidor del juego.
-2. Poné la pantalla en la tele y apretá **F11** para pantalla completa. Tocá la pantalla o una tecla para activar el sonido.
+2. Poné la pantalla en la tele. Al tocar **¡Empezar!** se pone sola en pantalla completa (también con la tecla **F**). Tocá la pantalla o una tecla para activar el sonido.
+   - **P**: pausa (en la tele y en los celus aparece "Pausa"; todo queda congelado, incluso a mitad de un minijuego). Con **P** o un clic se sigue.
+   - **M**: silencio (se acuerda para la próxima vez).
+   - La pantalla de la compu no se apaga sola mientras el juego está abierto.
 3. Cada jugador **escanea el QR** con el celu, pone su nombre, **elige su personaje** y toca **LISTO**.
 4. **En la compu** (con el mouse, en la pantalla de la tele) se elige todo lo de la partida: **tablero**, **modo**, rondas o Copas, bots (sumar, sacar) y sacar jugadores. Cuando todos tocaron LISTO: **¡Empezar!**
 
@@ -37,6 +40,7 @@ Queda en `dist/CheParty.exe`. Para jugar sin armar el `.exe`: `npm start` y abri
 - **Por rondas** (como el original): de 8 a 50 rondas (8, 12, 16, 20, 30, 40 o 50) para partidas largas. Gana el que tiene más Copas al final.
   - Faltando 3 rondas: **¡Últimas 3 rondas!** Las casillas valen el doble y el que viene último recibe 10 mangos.
   - Al final, **premios sorpresa** (+1 Copa cada uno): hay 21 y en cada partida salen 5 al azar (entre los que tienen un ganador claro). Para cada uno se ven las barras de todos con un redoble y después quién gana. Algunos: Rey del Minijuego, El Millonario, Mala Leche, El Caminante, Comprador Compulsivo, El Regalón, Dado de Oro, La Tortuga, El Duelista, El Turista, El Banquero, El Chorro, El Pechofrío…
+  - Para cerrar, la cámara sube a un **podio entre las nubes**: los tres primeros en sus escalones, el ganador con la Copa arriba de la cabeza y papelitos, y al costado la tabla final.
 - **Por Copas**: gana el primero que junta 1, 2, 3, 5, 7 o 10 Copas.
 - **Solo minijuegos**: sin tablero. Desde la compu elegís qué minijuego jugar y en qué modo (todos, duelo, 2 vs 2 o 1 vs 3), o uno al azar. Cada victoria suma una Copa; con 🏁 Terminar se ve quién ganó. Sirve para probar los juegos.
 
