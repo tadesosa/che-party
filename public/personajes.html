@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Che Party — Personajes</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#8fd3ff}canvas{display:block;width:100vw;height:100vh}</style>
+<script type="importmap">{ "imports": { "three": "/lib/three.module.js", "three/addons/": "/lib/addons/" } }</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script type="module">
+// Galería para ver los personajes de cerca mientras se diseñan.
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { makeCharacter, animateChar, makeLabel } from './models.js';
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.shadowMap.enabled = true;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#9fd8ff');
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.6;
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+camera.position.set(0, 3.2, 13.5); camera.lookAt(0, 0.9, -0.6);
+scene.add(new THREE.HemisphereLight('#fff', '#5a8f4a', 1.1));
+const sun = new THREE.DirectionalLight('#fff2d6', 2.2); sun.position.set(5, 10, 8); sun.castShadow = true; scene.add(sun);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(20, 32), new THREE.MeshStandardMaterial({ color: '#7cc46b' }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+const chars = [['mate', '#2e9e48', 'El Mate'], ['empanada', '#ef8a17', 'La Empanada'], ['alfajor', '#7b4a2d', 'El Alfajor'],
+  ['medialuna', '#e8c12e', 'La Medialuna'], ['chori', '#d63a2f', 'El Choripán'], ['dulce', '#4aa8e0', 'El Dulce de Leche'],
+  ['choclo', '#9bc53d', 'El Choclo'], ['pastafrola', '#b5446e', 'La Pastafrola'], ['tortafrita', '#c98f3a', 'La Torta Frita'], ['sifon', '#74acdf', 'Don Sifón']];
+const gs = chars.map(([k, c, n], i) => {
+  const g = makeCharacter(k, c); g.position.x = -4.4 + (i % 5) * 2.2; g.position.z = i < 5 ? -2.5 : 1;
+  const l = makeLabel(n, { size: 0.3 }); l.position.y = 2.2; g.add(l);
+  scene.add(g); return g;
+});
+function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const t = clock.getElapsedTime();
+  gs.forEach((g, i) => {
+    g.rotation.y = Math.sin(t * 0.7 + i) * 0.5;
+    animateChar(g, t, { wave: i % 2 === 0, phase: i });
+  });
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

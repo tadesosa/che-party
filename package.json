@@ -1,0 +1,22 @@
+{
+  "name": "che-party",
+  "version": "0.1.0",
+  "description": "Che Party: party game argentino de tablero y minijuegos. Se juega con el celu y una pantalla, por wifi local.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "exe": "node build-exe.js",
+    "test": "node test/partida.js",
+    "test:minijuegos": "node test/minijuegos.js",
+    "test:escenas": "node test/escenas.mjs"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "three": "0.160.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "postject": "^1.0.0-alpha.6"
+  }
+}

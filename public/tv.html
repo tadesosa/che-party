@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Che Party — Pantalla</title>
+<link rel="icon" href="/logo.svg">
+<link rel="stylesheet" href="/tv.css">
+<script type="importmap">{ "imports": { "three": "/lib/three.module.js", "three/addons/": "/lib/addons/" } }</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="lobby" class="panel lobby-panel hidden">
+  <div class="lobby-head">
+    <div class="brand"><img src="/logo.svg" alt="Che Party" class="brand-logo"><h1 class="logo">Che Party</h1></div>
+    <div class="qr-mini"><img id="qr" src="/qr.svg" alt="Código QR para entrar"><div><b>Escaneá para jugar</b><div id="joinUrl" class="url"></div><div class="hint">Mismo wifi que esta compu</div></div></div>
+  </div>
+  <div class="lobby-cols">
+    <div class="col">
+      <h2>Jugadores <span id="lobbyCount"></span></h2>
+      <ul id="lobbyList"></ul>
+      <div class="bot-row"><button id="tvBotAdd" class="tvbtn">+ Sumar bot</button><button id="tvBotDel" class="tvbtn">− Sacar bot</button></div>
+      <p class="hint">En el celu cada uno elige su personaje y toca LISTO.</p>
+    </div>
+    <div class="col">
+      <h2>Tablero</h2>
+      <div id="tvBoards" class="board-cards"></div>
+      <h2>Modo</h2>
+      <div id="tvModes" class="seg">
+        <button data-mode="rondas">⏱️ Por rondas</button><button data-mode="copas">🏆 Por Copas</button><button data-mode="minis">🎮 Solo minijuegos</button>
+      </div>
+      <div id="tvNums" class="nums"></div>
+      <p id="tvModeHint" class="hint"></p>
+      <button id="tvStart" class="tvbtn start">¡Empezar!</button>
+      <p id="tvStartHint" class="hint"></p>
+    </div>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="round"></div>
+  <div id="cards"></div>
+</div>
+
+<div id="banner" class="hidden"></div>
+<div id="turnBanner" class="hidden"><span class="em"></span><span class="txt"></span></div>
+<div id="dice" class="hidden"><div class="face"></div><div class="left"></div></div>
+<div id="orderPanel" class="panel hidden">
+  <div class="mg-kicker">¿Quién arranca?</div>
+  <h1>¡Tiren el dado!</h1>
+  <div id="orderList" class="order-list"></div>
+</div>
+
+<div id="mgIntro" class="panel hidden">
+  <div class="mg-kicker">¡Minijuego!</div>
+  <div id="mgMode" class="mg-mode"></div>
+  <h1 id="mgTitle"></h1>
+  <p id="mgInstr"></p>
+  <div id="mgControl" class="mg-control"></div>
+  <div id="mgReady" class="ready-row"></div>
+</div>
+
+<div id="mgHud" class="hidden">
+  <div id="mgTime"></div>
+  <div id="mgScores"></div>
+</div>
+<div id="countdown" class="hidden"></div>
+
+<div id="results" class="panel hidden">
+  <h1 id="resTitle">Resultados</h1>
+  <ol id="resList"></ol>
+</div>
+
+<div id="end" class="panel hidden">
+  <div class="mg-kicker">Fin de la partida</div>
+  <h1 id="endTitle"></h1>
+  <ol id="endList"></ol>
+  <button id="tvAgain" class="tvbtn start">Jugar de nuevo</button>
+</div>
+
+<div id="bonusPanel" class="panel hidden">
+  <div class="mg-kicker">Premio sorpresa · <span id="bonusCount"></span></div>
+  <div id="bonusIcon" class="bonus-icon"></div>
+  <h1 id="bonusTitle"></h1>
+  <p id="bonusDesc"></p>
+  <div id="bonusBars" class="bonus-bars"></div>
+</div>
+
+<div id="newsPanel" class="hidden">
+  <div class="news-box">
+    <div class="news-head"><span class="live">● EN VIVO</span><span>ÚLTIMO MOMENTO</span></div>
+    <div class="news-body">
+      <div id="newsIcon" class="news-icon"></div>
+      <div><h1 id="newsTitle"></h1><p id="newsText"></p><p id="newsResult" class="news-result hidden"></p></div>
+    </div>
+  </div>
+  <div class="ticker"><span id="newsTicker"></span></div>
+</div>
+
+<div id="giftPanel" class="panel hidden">
+  <div class="mg-kicker">🎁 Regalo de Sifón</div>
+  <div id="giftWho" class="gift-who"></div>
+  <div id="giftBoxes" class="gift-boxes"></div>
+</div>
+
+<div id="pickPanel" class="panel hidden">
+  <div class="mg-kicker">🎮 Solo minijuegos</div>
+  <h1>¿Qué jugamos?</h1>
+  <p id="pickInfo"></p>
+  <div id="pickScores" class="order-list"></div>
+  <div class="bot-row"><button id="tvPickRandom" class="tvbtn start">🎲 Uno al azar</button><button id="tvPickEnd" class="tvbtn">🏁 Terminar</button></div>
+  <div id="pickList" class="pick-list"></div>
+</div>
+<div id="toast" class="hidden"></div>
+
+<div id="host" class="hidden"><canvas id="hostCanvas"></canvas><img id="hostImg" alt=""><div class="bubble"><b>Don Sifón</b><span id="hostText"></span></div></div>
+
+<div id="wipe"><div class="sun">☀</div></div>
+<div id="soundHint">🔊 Tocá la pantalla o una tecla para activar el sonido</div>
+<div id="offline" class="hidden">Reconectando con el servidor…</div>
+
+<script type="module" src="/tv.js"></script>
+</body>
+</html>

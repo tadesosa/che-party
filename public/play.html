@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Che Party</title>
+<link rel="icon" href="/logo.svg">
+<link rel="stylesheet" href="/play.css">
+<script type="importmap">{ "imports": { "three": "/lib/three.module.js" } }</script>
+</head>
+<body>
+<header id="top" class="hidden">
+  <div id="meEmoji" class="avatar"></div>
+  <div class="who"><div id="meName"></div><div id="meStats" class="chips"></div></div>
+  <div id="meItems" class="bag"></div>
+</header>
+
+<div id="cue" class="cue hidden"><span id="cueText"></span></div>
+
+<main>
+  <section id="sJoin" class="screen">
+    <img src="/logo.svg" alt="Che Party" class="join-logo">
+    <label class="field-label" for="name">Tu nombre</label>
+    <input id="name" maxlength="14" autocomplete="off" placeholder="Escribilo acá">
+    <button id="btnJoin" class="btn primary big">Entrar</button>
+    <p id="joinErr" class="err"></p>
+  </section>
+
+  <section id="sLobby" class="screen lobby hidden">
+    <div class="lobby-hero">
+      <div id="lobbyChar" class="hero-face"></div>
+      <div>
+        <div class="kicker">Tu personaje</div>
+        <div id="lobbyCharName" class="hero-name"></div>
+      </div>
+    </div>
+    <div id="charGrid" class="char-grid"></div>
+    <button id="btnLobbyReady" class="btn primary big ready-btn">LISTO</button>
+    <p id="lobbyInfo" class="muted"></p>
+    <p id="lobbyErr" class="err"></p>
+  </section>
+
+  <section id="sWait" class="screen hidden">
+    <div class="tv-icon"><span></span></div>
+    <p id="waitMsg" class="msg"></p>
+  </section>
+
+  <section id="sRoll" class="screen hidden">
+    <div class="kicker glow">¡Te toca!</div>
+    <button id="btnRoll" class="round-btn dice"><span class="die">🎲</span><span class="lbl">TIRAR</span></button>
+    <div id="rollItems" class="items"></div>
+  </section>
+
+  <section id="sOrder" class="screen hidden">
+    <div class="kicker">¿Quién arranca?</div>
+    <button id="btnOrder" class="round-btn dice"><span class="die">🎲</span><span class="lbl">TIRAR</span></button>
+    <div id="orderResult" class="big-num hidden"></div>
+    <p id="orderInfo" class="muted"></p>
+  </section>
+
+  <section id="sPath" class="screen hidden">
+    <div class="kicker">Cruce</div>
+    <p class="msg">¿Por dónde seguís?</p>
+    <div id="pathList" class="paths"></div>
+  </section>
+
+  <section id="sDuel" class="screen hidden">
+    <div class="kicker danger">⚔️ Duelo</div>
+    <p id="duelMsg" class="msg"></p>
+    <button id="btnDuelYes" class="btn danger big">¡A duelo!</button>
+    <button id="btnDuelNo" class="btn ghost">No, dejá</button>
+  </section>
+
+  <section id="sCounter" class="screen hidden">
+    <p id="counterHint" class="msg">Contá en la tele</p>
+    <div class="counter">
+      <button id="btnMinus" class="round-btn small">−</button>
+      <div id="counterVal" class="big-num">0</div>
+      <button id="btnPlus" class="round-btn small">+</button>
+    </div>
+    <button id="btnCountOk" class="btn primary big">✓ Listo</button>
+  </section>
+
+  <section id="sCopa" class="screen hidden">
+    <div class="kicker gold">🏆 La Copa</div>
+    <p id="copaMsg" class="msg"></p>
+    <button id="btnCopaYes" class="btn gold big">Comprar</button>
+    <button id="btnCopaNo" class="btn ghost">Paso</button>
+  </section>
+
+  <section id="sShop" class="screen hidden">
+    <div class="kicker">🏪 Kiosco</div>
+    <div id="shopList" class="shop"></div>
+    <button id="btnShopNo" class="btn ghost">No compro nada</button>
+  </section>
+
+  <section id="sGift" class="screen hidden">
+    <div class="kicker gold">🎁 Regalo</div>
+    <p id="giftMsg" class="msg"></p>
+    <div id="giftList" class="gifts"></div>
+  </section>
+
+  <section id="sTarget" class="screen hidden">
+    <div id="targetKicker" class="kicker glow"></div>
+    <p id="targetMsg" class="msg"></p>
+    <div id="targetList" class="targets"></div>
+  </section>
+
+  <section id="sNumber" class="screen hidden">
+    <div class="kicker glow">🎯 Dado Trucho</div>
+    <p class="msg">¿Qué número querés sacar?</p>
+    <div id="numberGrid" class="number-grid"></div>
+  </section>
+
+  <section id="sMgIntro" class="screen hidden">
+    <div class="kicker">Minijuego</div>
+    <h2 id="mgTitle"></h2>
+    <div id="mgCtrl" class="ctrl-hint"></div>
+    <p id="mgInstr" class="instr"></p>
+    <button id="btnReady" class="btn primary big ready-btn">LISTO</button>
+    <p id="readyInfo" class="muted"></p>
+  </section>
+
+  <section id="sJoy" class="screen ctrl hidden">
+    <div id="joyZone" class="joy-zone">
+      <div class="zone-hint">Apoyá el dedo y deslizá</div>
+      <div id="joy" class="joy"><div id="knob" class="knob"></div></div>
+    </div>
+    <button id="btnAction" class="action"></button>
+  </section>
+
+  <section id="sLR" class="screen ctrl-lr hidden">
+    <button id="btnLeft" class="lr"><span>◀</span></button>
+    <button id="btnRight" class="lr"><span>▶</span></button>
+  </section>
+
+  <section id="sMash" class="screen ctrl hidden">
+    <button id="btnMash" class="mash"><span class="lbl">¡APRETÁ!</span><span id="mashCount">0</span></button>
+  </section>
+
+  <section id="sButtons" class="screen ctrl-btns hidden">
+    <div id="meter" class="meter hidden">
+      <div class="meter-bar"><div class="zone good"></div><div class="zone perfect"></div><div id="needle" class="needle"></div></div>
+      <div class="meter-labels"><span>Crudo</span><span>A punto</span><span>Quemado</span></div>
+    </div>
+    <div id="btnGrid" class="btn-grid"></div>
+  </section>
+
+  <section id="sResult" class="screen hidden">
+    <div id="resPlace" class="big-num"></div>
+    <p id="resMsg" class="msg"></p>
+  </section>
+
+  <section id="sEnd" class="screen hidden">
+    <div class="kicker gold">Fin de la partida</div>
+    <div id="endPlace" class="big-num"></div>
+    <p id="endMsg" class="msg"></p>
+    <p class="muted">Para jugar de nuevo, elegí en la compu.</p>
+  </section>
+</main>
+
+<div id="practice" class="hidden"><span>Práctica: probá el control</span><button id="btnReady2" class="btn primary">LISTO</button></div>
+<div id="offline" class="hidden">Reconectando…</div>
+<script src="/play.js"></script>
+<script type="module">
+  // Retratos 3D de los personajes (si el celu no puede, quedan los emojis)
+  import { portraitURL } from '/portrait.js';
+  window.lpPortrait = portraitURL;
+  window.dispatchEvent(new Event('lp-portrait'));
+</script>
+</body>
+</html>

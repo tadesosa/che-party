@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 340" width="300" height="340">
+  <title>Che Party</title>
+  <defs>
+    <clipPath id="sh"><path d="M30,40 H270 V170 Q270,270 150,320 Q30,270 30,170 Z" /></clipPath>
+    <g id="ray"><path d="M0,-40 Q8,-34 3,-27 Q-6,-33 0,-40Z" /></g>
+  </defs>
+  <!-- Borde dorado del escudo -->
+  <path d="M22,32 H278 V172 Q278,280 150,332 Q22,280 22,172 Z" fill="#f6b40e" stroke="#1b2a4a" stroke-width="7" />
+  <!-- Franjas celeste y blanca -->
+  <g clip-path="url(#sh)">
+    <rect x="30" y="40" width="240" height="290" fill="#ffffff" />
+    <rect x="30" y="40" width="80" height="290" fill="#74acdf" />
+    <rect x="190" y="40" width="80" height="290" fill="#74acdf" />
+  </g>
+  <path d="M30,40 H270 V170 Q270,270 150,320 Q30,270 30,170 Z" fill="none" stroke="#1b2a4a" stroke-width="4" />
+  <!-- Sol de Mayo -->
+  <g transform="translate(150,82) scale(0.8)">
+    <g fill="#f6b40e" stroke="#c98a00" stroke-width="1.5">
+      <polygon points="0,-46 5,-28 -5,-28" /><polygon points="0,46 5,28 -5,28" /><polygon points="-46,0 -28,5 -28,-5" /><polygon points="46,0 28,5 28,-5" />
+      <polygon points="32,-32 23,-16 16,-23" /><polygon points="-32,-32 -23,-16 -16,-23" /><polygon points="32,32 23,16 16,23" /><polygon points="-32,32 -23,16 -16,23" />
+      <use href="#ray" transform="rotate(22)" /><use href="#ray" transform="rotate(67)" /><use href="#ray" transform="rotate(112)" /><use href="#ray" transform="rotate(157)" />
+      <use href="#ray" transform="rotate(202)" /><use href="#ray" transform="rotate(247)" /><use href="#ray" transform="rotate(292)" /><use href="#ray" transform="rotate(337)" />
+      <circle r="22" />
+    </g>
+    <g fill="#7a4a00"><circle cx="-7" cy="-4" r="2.6" /><circle cx="7" cy="-4" r="2.6" /></g>
+    <path d="M-8,7 Q0,13 8,7" stroke="#7a4a00" stroke-width="2.4" fill="none" stroke-linecap="round" />
+  </g>
+  <!-- La Copa -->
+  <g transform="translate(150,182) scale(1.25)">
+    <path d="M-26,-34 H26 V-24 Q26,6 0,14 Q-26,6 -26,-24 Z" fill="#f5c518" stroke="#9a7300" stroke-width="3" />
+    <path d="M-26,-24 Q-44,-24 -40,-8 Q-36,4 -22,2" fill="none" stroke="#9a7300" stroke-width="5" />
+    <path d="M26,-24 Q44,-24 40,-8 Q36,4 22,2" fill="none" stroke="#9a7300" stroke-width="5" />
+    <rect x="-6" y="13" width="12" height="14" fill="#f5c518" stroke="#9a7300" stroke-width="3" />
+    <rect x="-20" y="26" width="40" height="10" rx="3" fill="#2e9e48" stroke="#1b5e20" stroke-width="3" />
+    <rect x="-24" y="35" width="48" height="9" rx="3" fill="#f5c518" stroke="#9a7300" stroke-width="3" />
+    <path d="M-16,-28 Q-18,-6 -6,4" stroke="#fff6bf" stroke-width="5" fill="none" stroke-linecap="round" opacity=".8" />
+  </g>
+  <!-- Cinta con el nombre -->
+  <path d="M8,236 L40,226 L40,272 L8,282 L20,259 Z" fill="#c0392b" stroke="#1b2a4a" stroke-width="4" />
+  <path d="M292,236 L260,226 L260,272 L292,282 L280,259 Z" fill="#c0392b" stroke="#1b2a4a" stroke-width="4" />
+  <path d="M34,224 Q150,246 266,224 L266,270 Q150,292 34,270 Z" fill="#e14b3c" stroke="#1b2a4a" stroke-width="5" />
+  <text x="150" y="264" text-anchor="middle" font-family="'Trebuchet MS', Arial, sans-serif" font-weight="900" font-size="38" fill="#ffffff" stroke="#1b2a4a" stroke-width="2" letter-spacing="1">CHE PARTY</text>
+  <g fill="#ffffff" stroke="#1b2a4a" stroke-width="2">
+    <path d="M70,300 l4,9 10,1 -8,6 3,10 -9,-6 -9,6 3,-10 -8,-6 10,-1z" />
+    <path d="M230,300 l4,9 10,1 -8,6 3,10 -9,-6 -9,6 3,-10 -8,-6 10,-1z" />
+  </g>
+</svg>
