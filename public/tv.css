@@ -391,3 +391,11 @@ kbd { font: inherit; font-weight: 900; background: #fff; border: 2px solid var(-
 .pause-icon { font-size: 80px; line-height: 1; }
 .pause-box h1 { margin: 6px 0 4px; font-size: 64px; }
 .pause-box p { margin: 0; font-size: 22px; font-weight: 700; }
+/* 720p: la columna de modo era la más alta (y empujaba el scroll) */
+@media (max-height: 800px) {
+  #tvModeHint { display: none; }
+  .col-mode .seg { gap: 6px; }
+  .col-mode .seg button { padding: 6px 10px; font-size: 17px; }
+  .col-mode .tvbtn.start { margin-top: 10px; padding: 10px 20px; font-size: 26px; }
+  .hint.keys { padding-top: 4px; }
+}

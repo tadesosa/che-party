@@ -36,7 +36,7 @@ const walk = (dir, prefix = '') => {
 walk(path.join(ROOT, 'public'));
 assets['lib/three.module.js'] = path.join(ROOT, 'node_modules', 'three', 'build', 'three.module.js');
 // Complementos de three que usa la tele (brillo, reflejos)
-for (const dir of ['postprocessing', 'shaders', 'environments', 'utils', 'loaders', 'geometries']) walk(path.join(ROOT, 'node_modules', 'three', 'examples', 'jsm', dir), 'lib/addons/' + dir + '/');
+for (const dir of ['postprocessing', 'shaders', 'environments', 'utils', 'loaders', 'geometries', 'math']) walk(path.join(ROOT, 'node_modules', 'three', 'examples', 'jsm', dir), 'lib/addons/' + dir + '/');
 // Windows no puede leer rutas de más de 260 caracteres: copiamos todo a una carpeta temporal corta
 const STAGE = path.join(require('os').tmpdir(), 'laprevia-build');
 fs.rmSync(STAGE, { recursive: true, force: true });
