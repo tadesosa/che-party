@@ -25,13 +25,15 @@ const { CHARACTERS } = require('../game');
 const keys = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(MINIGAMES);
 const CASES = { ffa: 4, duel: 2, '2v2': 4, '1v3': 4 };
 let fail = 0;
+let rot = 0;
 for (const key of keys) {
   let scene;
   try { scene = (await import(`../public/mg/${key}.js`)).default; } catch (e) { console.log(key.padEnd(13), 'NO CARGA:', e.message); fail++; continue; }
   const out = [];
   for (const mode of MINIGAMES[key].modes) {
     const n = CASES[mode];
-    const players = Array.from({ length: n }, (_, i) => ({ id: 'p' + i, name: 'J' + i, char: CHARACTERS[i].key }));
+    // Van rotando los personajes, así cada uno pasa por varios minijuegos
+    const players = Array.from({ length: n }, (_, i) => ({ id: 'p' + i, name: 'J' + i, char: CHARACTERS[(i + rot++) % CHARACTERS.length].key }));
     const ids = players.map((p) => p.id);
     const teams = mode === '2v2' ? [ids.slice(0, 2), ids.slice(2)] : mode === '1v3' ? [ids.slice(0, 1), ids.slice(1)] : mode === 'duel' ? [[ids[0]], [ids[1]]] : null;
     const CH = Object.fromEntries(CHARACTERS.map((c) => [c.key, c]));

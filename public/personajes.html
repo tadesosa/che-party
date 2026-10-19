@@ -25,17 +25,24 @@ scene.background = new THREE.Color('#9fd8ff');
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.6;
 const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
-camera.position.set(0, 3.2, 13.5); camera.lookAt(0, 0.9, -0.6);
 scene.add(new THREE.HemisphereLight('#fff', '#5a8f4a', 1.1));
 const sun = new THREE.DirectionalLight('#fff2d6', 2.2); sun.position.set(5, 10, 8); sun.castShadow = true; scene.add(sun);
 const ground = new THREE.Mesh(new THREE.CircleGeometry(20, 32), new THREE.MeshStandardMaterial({ color: '#7cc46b' }));
 ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 const chars = [['mate', '#2e9e48', 'El Mate'], ['empanada', '#ef8a17', 'La Empanada'], ['alfajor', '#7b4a2d', 'El Alfajor'],
   ['medialuna', '#e8c12e', 'La Medialuna'], ['chori', '#d63a2f', 'El Choripán'], ['dulce', '#4aa8e0', 'El Dulce de Leche'],
-  ['choclo', '#9bc53d', 'El Choclo'], ['pastafrola', '#b5446e', 'La Pastafrola'], ['tortafrita', '#c98f3a', 'La Torta Frita'], ['sifon', '#74acdf', 'Don Sifón']];
+  ['choclo', '#9bc53d', 'El Choclo'], ['pastafrola', '#b5446e', 'La Pastafrola'], ['tortafrita', '#c98f3a', 'La Torta Frita'],
+  ['vino', '#8e1b3a', 'El Malbec'], ['fernet', '#3d2a22', 'El Fernet'], ['quilmes', '#1f4fa8', 'La Quilmes'], ['sol', '#f2a90f', 'El Sol de Mayo'],
+  ['caballo', '#d9d2c3', 'El Caballo Blanco'], ['fiat', '#e3242b', 'El Fiat Uno'], ['termo', '#3f7a45', 'El Termo'], ['asado', '#a8452c', 'La Tira de Asado'],
+  ['pure', '#e2c779', 'El Puré'], ['capibara', '#a27a52', 'El Carpincho'], ['pava', '#1c9c8c', 'La Pava'], ['chocotorta', '#5a3424', 'La Chocotorta'],
+  ['sifon', '#74acdf', 'Don Sifón']]
+  // ?solo=vino,fernet muestra solo esos (para mirarlos de cerca)
+  .filter(([k]) => !new URLSearchParams(location.search).get('solo') || new URLSearchParams(location.search).get('solo').split(',').includes(k));
+const COLS = Math.min(6, chars.length), ROWS = Math.ceil(chars.length / COLS);
+camera.position.set(0, 1.6 + ROWS * 1.3, 6 + Math.max(COLS * 1.25, ROWS * 3.2)); camera.lookAt(0, 0.9, -(ROWS - 1) * 1.4);
 const gs = chars.map(([k, c, n], i) => {
-  const g = makeCharacter(k, c); g.position.x = -4.4 + (i % 5) * 2.2; g.position.z = i < 5 ? -2.5 : 1;
-  const l = makeLabel(n, { size: 0.3 }); l.position.y = 2.2; g.add(l);
+  const g = makeCharacter(k, c); g.position.x = ((i % COLS) - (COLS - 1) / 2) * 2.3; g.position.z = -Math.floor(i / COLS) * 2.8;
+  const l = makeLabel(n, { size: 0.3 }); l.position.y = (g.userData.top || 1.8) + 0.35; g.add(l);
   scene.add(g); return g;
 });
 function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }

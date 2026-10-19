@@ -36,6 +36,8 @@ const TREE = {
   green: [mat('#2f7d3a'), mat('#3f9e45'), mat('#62bd52')],
   jacaranda: [mat('#6a45b0'), mat('#8a5fd0'), mat('#ac86e8')],
 };
+// Las copas se mecen con el viento (board3d les pone el efecto)
+[...TREE.green, ...TREE.jacaranda].forEach((m) => { m.userData.foliage = true; });
 export function makeTree(purple) {
   const g = new THREE.Group();
   g.add(mesh(new THREE.CylinderGeometry(0.13, 0.24, 1.5, 7), TREE.trunk, { y: 0.75 }));

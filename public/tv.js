@@ -6,6 +6,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { makeCharacter, animateChar, makeCopa, makeChancla, makeLabel } from './models.js';
 import { makeBus, makeTaxi, makeCloud } from './props.js';
 import { buildBoard3D } from './board3d.js';
@@ -162,6 +163,25 @@ scene.add(sun, sun.target);
 // Postproceso: brillo suave en luces y la Copa
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
+// Oclusión ambiental: sombrita suave donde las cosas se tocan (pies en el piso, casas contra el pasto). Da mucha profundidad.
+const gtao = new GTAOPass(scene, camera, 512, 512, undefined,
+  { radius: 0.7, distanceExponent: 1.4, thickness: 1.2, scale: 1.1, samples: 12, distanceFallOff: 1 },
+  { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
+gtao.blendIntensity = 0.85;
+if (/[?&]noao/.test(location.search)) gtao.enabled = false; // para comparar con y sin
+// Lo transparente (árboles que se desvanecen, carteles, papelitos) no hace sombra
+const gtaoHide = gtao.overrideVisibility.bind(gtao);
+gtao.overrideVisibility = () => {
+  gtaoHide();
+  scene.traverse((o) => {
+    if (o.isSprite) o.visible = false;
+    else if (o.isMesh && o.material && !Array.isArray(o.material) && o.material.transparent && o.material.opacity < 0.7) o.visible = false;
+  });
+};
+// A media resolución: la sombrita es suave, no se nota y pesa la cuarta parte
+const gtaoSize = gtao.setSize.bind(gtao);
+gtao.setSize = (w, h) => gtaoSize(Math.max(1, Math.round(w / 2)), Math.max(1, Math.round(h / 2)));
+composer.addPass(gtao);
 const bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.25, 0.55, 0.92);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
@@ -182,7 +202,7 @@ const grade = new ShaderPass({
 });
 composer.addPass(grade);
 let useComposer = true;
-window.__lp = { renderer, scene, camera }; // para diagnosticar desde la consola
+window.__lp = { renderer, scene, camera, gtao }; // para diagnosticar desde la consola
 
 function resize() {
   renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -528,6 +548,13 @@ function playerWorldPos(id) {
   return v;
 }
 
+// Cara y postura según lo que le pasó: triste si perdió mangos, contento si ganó
+// En el podio, el último está triste
+const lastPlace = (id) => S.phase === 'end' && S.standings && S.standings.length > 2 && S.standings[S.standings.length - 1].id === id;
+function moodFor(id, amount) {
+  const pc = pieces.get(id); if (!pc || !amount) return;
+  if (amount < 0) { pc.sad = 2.8; pc.joy = 0; } else { pc.joy = 1.8; pc.sad = 0; }
+}
 function handleFx(fx) {
   if (!fx || fx.id === lastFx) return;
   const first = lastFx === 0;
@@ -536,7 +563,7 @@ function handleFx(fx) {
   if (fx.type === 'coins') {
     const base = playerWorldPos(fx.playerId);
     floatText((fx.amount >= 0 ? '+' : '') + fx.amount + ' mangos', base.clone().add(new THREE.Vector3(0, 3, 0)), fx.amount >= 0 ? '#1d8a3a' : '#c0392b');
-    coins(base, fx.amount);
+    coins(base, fx.amount); moodFor(fx.playerId, fx.amount);
     sfx(fx.amount >= 0 ? 'coin' : 'lose');
   } else if (fx.type === 'event') {
     if (fx.item === 'chancla') throwChancla(fx.from, fx.to);
@@ -544,7 +571,7 @@ function handleFx(fx) {
     fx.deltas.forEach((d, i) => setTimeout(() => {
       const base = playerWorldPos(d.playerId);
       floatText((d.amount >= 0 ? '+' : '') + d.amount, base.clone().add(new THREE.Vector3(0, 3, 0)), d.amount >= 0 ? '#1d8a3a' : '#c0392b');
-      coins(base, d.amount);
+      coins(base, d.amount); moodFor(d.playerId, d.amount);
     }, fx.item ? 800 : i * 120));
   } else if (fx.type === 'copa') {
     const pos = playerWorldPos(fx.playerId);
@@ -581,7 +608,7 @@ function handleFx(fx) {
     if (pc) { pc.fly = { from: B.pos(fx.from), to: B.pos(fx.to), t: -0.2, dur: 1.5, low: true, snow: true }; }
     for (let i = 0; i < 4; i++) setTimeout(() => { if (pc) snowPuff(pc.g.position.clone()); }, i * 250);
     sfx('swoosh'); setTimeout(() => sfx('bonk'), 1500);
-    if (fx.lost) setTimeout(() => { const base = playerWorldPos(fx.playerId); floatText('-' + fx.lost + ' mangos', base.clone().add(new THREE.Vector3(0, 3, 0)), '#c0392b'); coins(base, -fx.lost); }, 1600);
+    if (fx.lost) setTimeout(() => { const base = playerWorldPos(fx.playerId); floatText('-' + fx.lost + ' mangos', base.clone().add(new THREE.Vector3(0, 3, 0)), '#c0392b'); coins(base, -fx.lost); moodFor(fx.playerId, -fx.lost); }, 1600);
   } else if (fx.type === 'pinguino') {
     const pc = pieces.get(fx.playerId);
     if (pc) { snowPuff(pc.g.position.clone()); pc.surf = 2.6; pc.snowSurf = true; }
@@ -1240,7 +1267,8 @@ function updateBoard(dt, time) {
     if (pc.t >= 1 && pc.land <= 0) body.position.y = isMover && ph === 'turn' ? Math.abs(Math.sin(time * 6)) * 0.3 : Math.abs(Math.sin(time * 2 + id.length)) * 0.04;
     else body.position.y = 0;
     const won = ph === 'end' && S.standings && S.standings[0] && S.standings[0].id === id;
-    animateChar(g, time, { walk: pc.t < 1 ? 1 : 0, cheer: pc.cheer > 0 || won, wave: isMover && ph === 'turn', phase: id.length });
+    pc.sad = Math.max(0, (pc.sad || 0) - dt); pc.joy = Math.max(0, (pc.joy || 0) - dt);
+    animateChar(g, time, { walk: pc.t < 1 ? 1 : 0, cheer: pc.cheer > 0 || won, wave: isMover && ph === 'turn', phase: id.length, mood: pc.sad > 0 || lastPlace(id) ? 'sad' : pc.joy > 0 ? 'happy' : null });
     blink(g, time);
   }
 
@@ -1376,8 +1404,15 @@ function checkPerf() {
   if (perfChecked || document.visibilityState !== 'visible' || real > 1) return;
   perfT += real; perfFrames++;
   if (perfT < 6) return;
-  perfChecked = true;
   const fps = perfFrames / perfT;
+  // Primer escalón: sin oclusión ambiental (es lo que más pesa) y volvemos a medir
+  if (fps < 50 && gtao.enabled) {
+    gtao.enabled = false;
+    perfT = 0; perfFrames = 0;
+    console.log('Che Party: sin oclusión ambiental (' + fps.toFixed(0) + ' fps)');
+    return;
+  }
+  perfChecked = true;
   if (fps < 40) {
     useComposer = false;
     pixelRatio = 1;

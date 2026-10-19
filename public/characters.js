@@ -2,6 +2,7 @@
 // cuerpo liso y brillante, texturas propias de cada comida, ojos con brillo, guantes blancos y zapatitos,
 // y un contorno oscuro que los hace resaltar en la tele.
 import * as THREE from 'three';
+import { extraBuilders } from './characters2.js';
 
 // ---------- Materiales ----------
 const toy = (color, opts = {}) => new THREE.MeshPhysicalMaterial({
@@ -319,6 +320,9 @@ const BUILD = {
   },
 };
 
+// Los de la segunda tanda (vino, fernet, Quilmes, sol, caballo, Fiat Uno, termo, asado, puré, carpincho, pava, chocotorta)
+Object.assign(BUILD, extraBuilders({ THREE, part, face, toy, flat, canvasTex, dots }));
+
 // Cada personaje mide ~1.6 de alto y mira hacia +z.
 export function makeCharacter(key, uiColor) {
   const g = new THREE.Group();
@@ -349,22 +353,48 @@ export function makeCharacter(key, uiColor) {
   g.userData.eyes = body.userData.eyes || [];
   g.userData.blinkAt = Math.random() * 4;
   g.userData.top = info.top;
+  g.userData.lift = lift; g.userData.liftY = lift.position.y;
+  g.userData.mouth = body.userData.mouth;
   return g;
 }
 
 // Animación de brazos y piernas.
 // walk: 0..1 (qué tan rápido camina) · cheer: brazos arriba festejando · wave: saluda con un brazo
-export function animateChar(g, time, { walk = 0, cheer = false, wave = false, phase = 0 } = {}) {
+// mood: 'sad' (perdió algo: se encorva, baja los brazos y pone cara triste) o 'happy' (saltito y sonrisa grande)
+export function animateChar(g, time, { walk = 0, cheer = false, wave = false, phase = 0, mood = null } = {}) {
   const arms = g.userData.arms, legs = g.userData.legs;
   if (!arms) return;
+  const sad = mood === 'sad', happy = mood === 'happy' || cheer;
   const sw = Math.sin(time * 11 + phase) * walk;
   arms.forEach((a, i) => {
     const side = a.userData.side;
     let rz = side * (0.45 + Math.sin(time * 2 + phase) * 0.04), rx = (i ? 1 : -1) * sw * 0.9;
     if (cheer) { rz = side * (2.5 + Math.sin(time * 10 + i) * 0.25); rx = 0; }
     else if (wave && i === 1) { rz = side * (2.4 + Math.sin(time * 9) * 0.35); rx = 0; }
+    else if (sad) { rz = side * 0.12; rx = 0.25; }
+    else if (happy) { rz = side * (1.1 + Math.sin(time * 12 + i * 3) * 0.3); }
     a.rotation.z += (rz - a.rotation.z) * 0.3;
     a.rotation.x += (rx - a.rotation.x) * 0.3;
   });
   legs.forEach((l, i) => { l.rotation.x = (i ? -1 : 1) * sw * 0.8; });
+
+  // Cuerpo vivo: respira, se balancea un poquito y al caminar se bambolea de lado a lado
+  const lift = g.userData.lift;
+  if (lift) {
+    const breath = Math.sin(time * 2.4 + phase * 1.7);
+    const sy = 1 + breath * 0.022 + (happy ? Math.abs(Math.sin(time * 9 + phase)) * 0.05 : 0);
+    lift.scale.set(1 - (sy - 1) * 0.6, sy, 1 - (sy - 1) * 0.6);
+    const tiltX = sad ? 0.2 : 0;
+    const tiltZ = Math.sin(time * 11 + phase) * 0.09 * walk + Math.sin(time * 0.9 + phase) * 0.025 * (1 - walk);
+    lift.rotation.x += (tiltX - lift.rotation.x) * 0.15;
+    lift.rotation.z += (tiltZ - lift.rotation.z) * 0.3;
+    lift.position.y = g.userData.liftY + (happy && !cheer ? Math.abs(Math.sin(time * 9 + phase)) * 0.12 : 0);
+  }
+  // Boca: triste se da vuelta, contento se agranda
+  const mouth = g.userData.mouth;
+  if (mouth) {
+    const my = sad ? -0.75 : happy ? 1.3 : 1;
+    mouth.scale.y += (my - mouth.scale.y) * 0.25;
+    mouth.scale.x += ((happy ? 1.15 : 1) - mouth.scale.x) * 0.25;
+  }
 }

@@ -15,6 +15,18 @@ const CHARACTERS = [
   { key: 'choclo', name: 'El Choclo', emoji: '🌽', color: '#9bc53d' },
   { key: 'pastafrola', name: 'La Pastafrola', emoji: '🥧', color: '#b5446e' },
   { key: 'tortafrita', name: 'La Torta Frita', emoji: '🫓', color: '#c98f3a' },
+  { key: 'vino', name: 'El Malbec', emoji: '🍷', color: '#8e1b3a' },
+  { key: 'fernet', name: 'El Fernet', emoji: '🥃', color: '#3d2a22' },
+  { key: 'quilmes', name: 'La Quilmes', emoji: '🍺', color: '#1f4fa8' },
+  { key: 'sol', name: 'El Sol de Mayo', emoji: '☀️', color: '#f2a90f' },
+  { key: 'caballo', name: 'El Caballo Blanco', emoji: '🐴', color: '#d9d2c3' },
+  { key: 'fiat', name: 'El Fiat Uno', emoji: '🚗', color: '#e3242b' },
+  { key: 'termo', name: 'El Termo', emoji: '🧉', color: '#3f7a45' },
+  { key: 'asado', name: 'La Tira de Asado', emoji: '🥩', color: '#a8452c' },
+  { key: 'pure', name: 'El Puré', emoji: '🥔', color: '#e2c779' },
+  { key: 'capibara', name: 'El Carpincho', emoji: '🦫', color: '#a27a52' },
+  { key: 'pava', name: 'La Pava', emoji: '🫖', color: '#1c9c8c' },
+  { key: 'chocotorta', name: 'La Chocotorta', emoji: '🍰', color: '#5a3424' },
 ];
 const MAX_PLAYERS = 6;
 // Cambia cada vez que arranca el servidor: si la tele o un celu tienen abierta una página de antes, se recargan solos
@@ -1153,7 +1165,8 @@ function createGame({ joinUrl, speed = 1, env = {} }) {
 
   // ---------- Jugadores ----------
   let nextId = 1;
-  const freeChar = () => CHARACTERS.find((c) => !game.players.some((p) => p.char === c.key));
+  // Uno libre al azar (así los bots no son siempre los mismos)
+  const freeChar = () => pickOne(CHARACTERS.filter((c) => !game.players.some((p) => p.char === c.key)));
   function newPlayer(name, bot) {
     const c = freeChar();
     const p = { id: (bot ? 'b' : 'p') + (nextId++) + Math.random().toString(36).slice(2, 7), name: name.slice(0, 14), char: c.key, bot, connected: !bot, ws: null };

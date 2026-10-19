@@ -231,8 +231,18 @@ Cada tablero tiene sus propios minijuegos, que solo salen ahí (y salen más seg
 
 ## Personajes
 
-El Mate, La Empanada, El Alfajor, La Medialuna, El Choripán, El Dulce de Leche, El Choclo, La Pastafrola y La Torta Frita
-(y Don Sifón, el anfitrión). Verlos de cerca: `http://localhost:3000/personajes.html`
+Hay 21 para elegir (y Don Sifón, el anfitrión):
+
+- **Comidas y bebidas**: El Mate, La Empanada, El Alfajor, La Medialuna, El Choripán, El Dulce de Leche, El Choclo, La Pastafrola, La Torta Frita, El Malbec, El Fernet, La Quilmes, La Tira de Asado, El Puré y La Chocotorta.
+- **Cosas nuestras**: El Termo, La Pava (enlozada, con florcitas), El Fiat Uno rojo, El Sol de Mayo, El Caballo Blanco de San Martín (con bicornio de granadero) y El Carpincho (con su mandarina en la cabeza).
+
+Los bots eligen uno libre al azar. Los personajes respiran, se bambolean al caminar, se ponen tristes cuando pierden mangos (se encorvan y la boca se da vuelta) y saltan contentos cuando ganan. En el podio, el último sale triste.
+Verlos de cerca: `http://localhost:3000/personajes.html` (o solo algunos: `personajes.html?solo=fiat,caballo`).
+
+### Cómo se ve
+
+- Oclusión ambiental: sombrita suave donde las cosas se tocan (pies, casas, árboles). Si la compu anda lenta se apaga sola; para comparar: `/tv?noao`.
+- El pasto, las flores y las copas de los árboles se mecen con el viento.
 
 ## Para desarrollar
 
@@ -250,7 +260,7 @@ El Mate, La Empanada, El Alfajor, La Medialuna, El Choripán, El Dulce de Leche,
 - `board.js`: los siete tableros (casillas, caminos, cruces y la altura de las montañas).
 - `minigames/`: la lógica de cada minijuego (corre en el servidor, así nadie hace trampa). `index.js` tiene la lista y los modos.
 - `public/tv.js`: la pantalla 3D (Three.js) y el panel de la sala de espera de la compu. `public/host3d.js`: Don Sifón en 3D. `public/board3d.js`, `public/decor.js` y `public/decor2.js` (Bariloche, Córdoba, Sur y Norte): los mapas en 3D (`decor.js` tiene el acomodador, que avisa en la consola si algún decorado pisa un camino). `public/terrain.js`: la altura del piso (la misma cuenta que `board.js`). `public/mg/`: la escena de cada minijuego.
-- `public/characters.js`: los personajes. `public/portrait.js`: las fotos de los personajes para la tele y el celu.
+- `public/characters.js` y `public/characters2.js`: los personajes. `public/portrait.js`: las fotos de los personajes para la tele y el celu.
 - `public/models.js` y `public/props.js`: objetos low-poly. `public/textures.js`: texturas hechas con código.
 - `public/audio.js`: música y efectos sintetizados (no usa archivos de audio).
 - `public/play.*`: el control del celular.

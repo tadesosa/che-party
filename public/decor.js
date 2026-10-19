@@ -204,7 +204,7 @@ function makeOlive() {
 function makeAlamo() { // álamo: alto y finito, como los de las acequias
   const g = new THREE.Group();
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.16, 1.2, 6), std({ color: '#7a6248' })); trunk.position.y = 0.6; g.add(trunk);
-  const top = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 3.2, 4, 8), std({ color: '#6f9a3a', flatShading: true })); top.position.y = 3; g.add(top);
+  const top = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 3.2, 4, 8), std({ color: '#6f9a3a', flatShading: true })); top.material.userData.foliage = true; top.position.y = 3; g.add(top);
   return shadowed(g);
 }
 function makeAdobe(color) { // casita baja de adobe con techo plano

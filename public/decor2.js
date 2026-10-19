@@ -40,13 +40,13 @@ function makePeak(r, h, { snow = 0.34, color = '#7d7064', snowColor = '#e3e9f0',
 function makePine(h = 3.4, color = '#2f6b3a') {
   const g = new THREE.Group();
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 0.8, 6), std({ color: '#6b4a2b' })); trunk.position.y = 0.4; g.add(trunk);
-  const leaf = std({ color, flatShading: true });
+  const leaf = std({ color, flatShading: true }); leaf.userData.foliage = true;
   for (let i = 0; i < 3; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(1.1 - i * 0.28, h * 0.42, 7), leaf); c.position.y = 0.8 + i * h * 0.24 + h * 0.18; g.add(c); }
   return shadowed(g);
 }
 function makeSnowPine(h = 3.4) {
   const g = makePine(h, '#2b5a36');
-  const snow = std({ color: '#ffffff', flatShading: true });
+  const snow = std({ color: '#ffffff', flatShading: true }); snow.userData.foliage = true;
   for (let i = 0; i < 3; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry((1.1 - i * 0.28) * 0.55, h * 0.16, 7), snow); c.position.y = 0.8 + i * h * 0.24 + h * 0.32; g.add(c); }
   return g;
 }

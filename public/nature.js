@@ -32,6 +32,46 @@ function macroVariation(material) {
   material.needsUpdate = true;
 }
 
+// ---------- Viento: el pasto y las flores se mecen (más arriba, más se mueven) ----------
+export const wind = { value: 0 };
+function windy(material, amount = 1) {
+  material.onBeforeCompile = (sh) => {
+    sh.uniforms.uWind = wind;
+    sh.vertexShader = 'uniform float uWind;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      #ifdef USE_INSTANCING
+        vec3 wBase = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+      #else
+        vec3 wBase = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+      #endif
+      float wH = max(position.y, 0.0);
+      float wS = sin(uWind * 1.7 + wBase.x * 0.31 + wBase.z * 0.23) * 0.6 + sin(uWind * 3.3 + wBase.x * 0.9 - wBase.z * 0.7) * 0.25;
+      transformed.x += wS * wH * ${(0.32 * amount).toFixed(3)};
+      transformed.z += wS * wH * ${(0.14 * amount).toFixed(3)};`);
+  };
+  material.customProgramCacheKey = () => 'wind' + amount;
+  return material;
+}
+
+// Copas de los árboles: se mueven en bloque, poquito y lento, cada árbol a su ritmo
+export function windFoliage(material) {
+  if (material.userData.windy) return material;
+  material.userData.windy = true;
+  const prev = material.onBeforeCompile;
+  material.onBeforeCompile = (sh, r) => {
+    if (prev) prev(sh, r);
+    sh.uniforms.uWind = wind;
+    sh.vertexShader = 'uniform float uWind;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      vec3 fBase = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+      float fS = sin(uWind * 1.3 + fBase.x * 0.21 + fBase.z * 0.17) * 0.7 + sin(uWind * 2.7 + fBase.z * 0.5) * 0.3;
+      float fK = 0.05 + max(position.y, 0.0) * 0.03;
+      transformed.x += fS * fK;
+      transformed.z += fS * fK * 0.45;`);
+  };
+  const key = material.customProgramCacheKey ? material.customProgramCacheKey() : '';
+  material.customProgramCacheKey = () => key + '|foliage';
+  return material;
+}
+
 // ---------- Geometrías (se arman una vez) ----------
 let GEO = null;
 function geos() {
@@ -130,7 +170,7 @@ export function scatterNature(group, nodes) {
   };
 
   // Pasto
-  const tufts = inst(G.tuft, flat('#ffffff'), picks.tuft.length, false);
+  const tufts = inst(G.tuft, windy(flat('#ffffff')), picks.tuft.length, false);
   picks.tuft.forEach((p, i) => {
     const [, , a, b] = p;
     place(tufts, i, p, a * 6.3, 0.7 + b * 0.5, 0.55 + a * 0.7);
@@ -139,8 +179,8 @@ export function scatterNature(group, nodes) {
 
   // Flores: tallo verde y cabecita de color
   const FLOWER = ['#fff4f0', '#ffd23f', '#ff7aa8', '#b28dff', '#ff6b3d', '#ffffff'];
-  const stems = inst(G.stem, flat('#3f8a33'), picks.flower.length, false);
-  const heads = inst(G.head, flat('#ffffff', { emissive: '#222222' }), picks.flower.length, false);
+  const stems = inst(G.stem, windy(flat('#3f8a33')), picks.flower.length, false);
+  const heads = inst(G.head, windy(flat('#ffffff', { emissive: '#222222' })), picks.flower.length, false);
   picks.flower.forEach((p, i) => {
     const [, , a, b] = p;
     const s = 0.8 + a * 0.6;

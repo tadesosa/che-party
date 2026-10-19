@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { makeTree, makeHouse, makeObelisco, makeFlag, makeLabel } from './models.js';
 import { makeKiosk, makeCasaRosada, makeFarol, makeBench, makeFountain, makeBusStop, makeArrow } from './props.js';
 import { tex } from './textures.js';
-import { scatterNature } from './nature.js';
+import { scatterNature, wind, windFoliage } from './nature.js';
 import { decorMendoza, decorCosta, placer, cityBlock, rng } from './decor.js';
 import { decorBariloche, decorCordoba, decorSur, decorNorte } from './decor2.js';
 import { kit, repaint } from './kit.js';
@@ -136,7 +136,7 @@ function kTree(i, purple) {
   t.traverse((o) => {
     if (o.isMesh && /wood|bark/i.test(o.material.name)) { if (!leafMats.has('bark')) { const m = o.material.clone(); m.color.set('#7a5232'); leafMats.set('bark', m); } o.material = leafMats.get('bark'); }
     if (!o.isMesh || !/leaf/i.test(o.material.name)) return;
-    if (!leafMats.has(color)) { const m = o.material.clone(); m.color.set(color); leafMats.set(color, m); }
+    if (!leafMats.has(color)) { const m = o.material.clone(); m.color.set(color); m.userData.foliage = true; leafMats.set(color, m); }
     o.material = leafMats.get(color);
   });
   return t;
@@ -451,6 +451,9 @@ export function buildBoard3D(group, board) {
   // Pasto, flores, piedras y arbustos sueltos por el pasto (sin pisar caminos, agua ni edificios)
   scatterNature(group, nodes);
 
+  // Las copas de los árboles se mecen con el viento (en el shader: no cuesta nada por cuadro)
+  group.traverse((o) => { if (o.isMesh && o.material && o.material.userData && o.material.userData.foliage) windFoliage(o.material); });
+
   // Lo que no se mueve no necesita recalcularse en cada cuadro
   const moving = new Set([...anim.boats, ...anim.water, ...anim.spin, ...anim.bob, ...anim.live, choice]);
   anim.fountains.forEach((f) => moving.add(f.userData.jet));
@@ -468,6 +471,7 @@ export function buildBoard3D(group, board) {
     showChoices,
     setBank(amount) { for (const l of bankLabels) { if (l.userData.amount === amount) continue; l.userData.amount = amount; const nl = makeLabel('🏦 ' + amount, { size: 0.5, bg: '#fff6c4', border: '#7a5b08' }); l.material.map = nl.material.map; l.scale.copy(nl.scale); l.material.needsUpdate = true; } },
     update(dt, time) {
+      wind.value = time;
       for (const w of anim.water) { const m = w.material.map; if (m) { m.offset.y = time * 0.02; m.offset.x = Math.sin(time * 0.3) * 0.02; } }
       for (const f of anim.fountains) f.userData.jet.scale.y = 1 + Math.sin(time * 5) * 0.15;
       for (const fl of anim.flags) {
