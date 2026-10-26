@@ -91,6 +91,10 @@ const LIST = {
   repulgue: require('./repulgue'),
   ofrenda: require('./ofrenda'),
   bombo: require('./bombo'),
+  bochas: require('./bochas'),
+  fichin: require('./fichin'),
+  dulce: require('./dulce'),
+  pizarron: require('./pizarron'),
 };
 
 // Modos de los minijuegos que ya existían

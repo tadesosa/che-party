@@ -103,8 +103,12 @@ import nubes from './mg/nubes.js';
 import repulgue from './mg/repulgue.js';
 import ofrenda from './mg/ofrenda.js';
 import bombo from './mg/bombo.js';
+import bochas from './mg/bochas.js';
+import fichin from './mg/fichin.js';
+import dulce from './mg/dulce.js';
+import pizarron from './mg/pizarron.js';
 
-const SCENES = { sumo, globo, alfajores, penales, carrera, sillas, asado, cruce, tango, pelota, empanadas, matecaliente, glaciar, bolita, cinchada, mancha, picadito, desenfunde, cebada, taba, sortija, billete, embolsados, bombuchas, fila, espuma, lazo, rayuela, truco, choripan, payada, murga, baldosa, futtenis, pato, metegol, escondida, cortedeluz, feria, muzza, timbre, obelisco, palomas, subte, fileteado, caminito, delivery, hinchada, pisada, corchos, barricas, mulas, carroza, cosecha, zondaviento, aconcagua, rafting, granizo, castillo, barrenador, tejo, pesca, paleta, churros, lobos, sombrilla, aguavivas, gaviotas, ski, chocolate, nieve, bolanieve, aerosilla, ovnis, jineteada, dique, parapente, abduccion, pinguinos, tobogan, tren, centolla, iglu, vizcachas, nubes, repulgue, ofrenda, bombo };
+const SCENES = { sumo, globo, alfajores, penales, carrera, sillas, asado, cruce, tango, pelota, empanadas, matecaliente, glaciar, bolita, cinchada, mancha, picadito, desenfunde, cebada, taba, sortija, billete, embolsados, bombuchas, fila, espuma, lazo, rayuela, truco, choripan, payada, murga, baldosa, futtenis, pato, metegol, escondida, cortedeluz, feria, muzza, timbre, obelisco, palomas, subte, fileteado, caminito, delivery, hinchada, pisada, corchos, barricas, mulas, carroza, cosecha, zondaviento, aconcagua, rafting, granizo, castillo, barrenador, tejo, pesca, paleta, churros, lobos, sombrilla, aguavivas, gaviotas, ski, chocolate, nieve, bolanieve, aerosilla, ovnis, jineteada, dique, parapente, abduccion, pinguinos, tobogan, tren, centolla, iglu, vizcachas, nubes, repulgue, ofrenda, bombo, bochas, fichin, dulce, pizarron };
 const $ = (id) => document.getElementById(id);
 const BOARD_PHASES = ['intro', 'order', 'turn', 'rolling', 'moving', 'path', 'copa', 'land', 'shop', 'item', 'duelAsk', 'bonus', 'copaMove', 'news', 'gift'];
 const TEAM_COLORS = ['#2f86e0', '#e14b3c'];
@@ -844,6 +848,10 @@ function renderHud() {
       lr: '📱 En el celu: botones ◀ ▶',
       buttons: '📱 En el celu: ' + (S.mg.buttons || []).map((b) => b.label).join('  '),
       joystick: '📱 En el celu: joystick' + (S.mg.action ? ' + botón ' + S.mg.action : ''),
+      sling: '📱 En el celu: gomera (tirá para atrás y soltá)',
+      slider: '📱 En el celu: deslizá el dedo (la paleta va adonde está el dedo)',
+      crank: '📱 En el celu: girá el dedo en círculos',
+      draw: '📱 En el celu: dibujá con el dedo o elegí la respuesta',
     }[S.mg.control] || '';
     const mgPlayers = S.players.filter((p) => S.mg.players.includes(p.id));
     const chip = (p) => `<span class="${S.mg.ready.includes(p.id) ? 'on' : ''}" style="background:${CH[p.char].color}" title="${esc(p.name)}">${faceImg(p)}</span>`;
@@ -1340,7 +1348,8 @@ function updateCamera(dt, time) {
   // Vista general: cada tablero dice desde dónde se lo ve entero
   const view = (S.board && S.board.view) || { pos: [0, 40, 32], look: [0, 0, -1] };
   if (location.hash === '#vista' && !inMg) { // vista de todo el mapa, para revisar el tablero
-    camTarget.set(...view.pos); camLook.lerp(tmpV.set(...view.look), 0.2);
+    const v = window.__vista || view; // desde la consola se puede mirar de cerca: __vista = { pos, look }
+    camTarget.set(...v.pos); camLook.lerp(tmpV.set(...v.look), 0.2);
   } else if (inMg && mgCam) {
     camTarget.copy(mgCam.pos); camLook.lerp(mgCam.look, 1 - Math.exp(-4 * dt));
     if (ph === 'mgIntro') camTarget.add(tmpV.set(Math.sin(time * 0.4) * 4, 2, 2));

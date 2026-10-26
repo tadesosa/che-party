@@ -149,6 +149,13 @@
     <div id="btnGrid" class="btn-grid"></div>
   </section>
 
+  <section id="sPad" class="screen ctrl-pad hidden">
+    <div id="padHint" class="pad-hint"></div>
+    <div id="padWrap" class="pad-wrap"><canvas id="padCanvas"></canvas></div>
+    <div id="padOpts" class="pad-opts hidden"></div>
+    <div id="padTools" class="pad-tools hidden"><button id="padClear" class="btn">🧽 Borrar todo</button></div>
+  </section>
+
   <section id="sResult" class="screen hidden">
     <div id="resPlace" class="big-num"></div>
     <p id="resMsg" class="msg"></p>
@@ -166,6 +173,7 @@
 <div id="offline" class="hidden">Reconectando…</div>
 <div id="pausePhone" class="hidden"><div>⏸</div><b>Pausa</b><span>Se sigue desde la compu</span></div>
 <script src="/play.js"></script>
+<script src="/pad.js"></script>
 <script type="module">
   // Retratos 3D de los personajes (si el celu no puede, quedan los emojis)
   import { portraitURL } from '/portrait.js';

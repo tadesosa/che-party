@@ -97,11 +97,11 @@ El kiosco no tiene todo siempre: ofrece cuatro ítems al azar más el remís.
 | ☂️ Paraguas | 5 | Se usa solo: te cubre del próximo robo, chancleta, bache o impuesto al que va primero |
 | 🚕 Remís | 50 | Te lleva directo a la Copa |
 
-## Minijuegos (88)
+## Minijuegos (92)
 
 Cada tablero tiene sus propios minijuegos, que solo salen ahí (y salen más seguido); los demás salen en cualquier tablero. En el modo **Solo minijuegos** se pueden elegir todos.
 
-### En todos los tableros (38)
+### En todos los tableros (42)
 
 | Minijuego | De qué se trata | Modo | Control en el celu |
 |---|---|---|---|
@@ -143,6 +143,10 @@ Cada tablero tiene sus propios minijuegos, que solo salen ahí (y salen más seg
 | **Metegol** | Celestes contra rojos en el metegol. | 2 vs 2 | joystick + 🦵 PATEAR |
 | **La Escondida** | El que está solo cuenta hasta 5 y después busca: lo que ilumina con la linterna, lo encuentra (¡Piedra libre!). | 1 vs 3 | joystick |
 | **Corte de Luz** | ¡Se cortó la luz! | todos / duelo | joystick |
+| **Bochas en el Club** | Tirá la bocha con la gomera del celu (para dónde apuntás y cuánto tirás, en un solo gesto). Siempre tira el que está más lejos del bochín; se puede bochar. | todos / duelo | 🎯 gomera (tirar para atrás y soltar) |
+| **Tejo del Fichín** | Tejo de aire con un arco por jugador alrededor de la mesa. Tu paleta va justo adonde está el dedo; si te hacen un gol, perdés una vida. | todos / duelo | ↔️ deslizador (posición exacta) |
+| **Revolvé el Dulce de Leche** | Girá el dedo en círculos para revolver: ni muy lento (se pega) ni muy rápido (salpica), y cambiá el sentido cuando grita la abuela. | todos / duelo | 🔄 girar el dedo en círculos |
+| **Dibujito en el Pizarrón** | Por turnos uno dibuja una palabra secreta con el dedo y sale con tiza en la tele; los demás eligen qué es entre seis. | todos / duelo | ✏️ dibujar / elegir la respuesta |
 
 ### Solo en Buenos Aires (10)
 
@@ -248,7 +252,7 @@ Verlos de cerca: `http://localhost:3000/personajes.html` (o solo algunos: `perso
 
 - `npm start` levanta el servidor. `npm run exe` arma `dist/CheParty.exe`.
 - `LP_MINIGAME=penales,tango npm start` fuerza esos minijuegos en orden (los de equipos arman los equipos solos). `LP_SKIP_BOARD=1` salta los turnos del tablero.
-- Pruebas: `node test/minijuegos.js` (los 88 minijuegos en todos sus modos), `node test/escenas.mjs` (arma la escena 3D de cada minijuego sin navegador y la hace correr con una partida de bots) y la partida completa acelerada:
+- Pruebas: `node test/minijuegos.js` (los 92 minijuegos en todos sus modos), `node test/escenas.mjs` (arma la escena 3D de cada minijuego sin navegador y la hace correr con una partida de bots) y la partida completa acelerada:
   `LP_SPEED=10 PORT=3001 node server.js` y en otra terminal `BOARD=mendoza MODE=rondas PORT=3001 node test/partida.js`.
 - `/tv#vista` muestra el mapa entero desde arriba (para revisar el tablero).
 - `LP_NEWS=1` hace que haya noticia en todas las rondas y `LP_NEWS_KEY=revoleo` fuerza una noticia en particular.

@@ -76,7 +76,8 @@ window.addEventListener('online', () => connect());
 let cueTimer = null;
 let meter = null; // { speed, phase, start }
 function onCue(c) {
-  if (c.reset) { setCue(''); meter = null; btnLabels = null; $('meter').classList.add('hidden'); return; }
+  if (c.reset) { setCue(''); meter = null; btnLabels = null; $('meter').classList.add('hidden'); if (window.padCue) window.padCue(null); return; }
+  if ('pad' in c && window.padCue) window.padCue(c.pad);
   if (c.labels) { btnLabels = c.labels; applyLabels(); }
   if (c.text) setCue(c.text);
   if ('counter' in c) { counter.open = !!c.counter; renderCounter(); }
@@ -121,7 +122,7 @@ function showScreen(id) {
     if (lastScreen === 'sJoy' && joyPointer !== null) releaseJoy();
     if (lastScreen === 'sLR' && held.size) { held.clear(); updateLR(); }
     if (['sRoll', 'sCopa', 'sShop', 'sPath', 'sOrder', 'sDuel', 'sGift', 'sTarget', 'sNumber'].includes(id)) buzz([60, 40, 60]);
-    if (!['sJoy', 'sLR', 'sMash', 'sButtons', 'sCounter'].includes(id)) setCue('');
+    if (!['sJoy', 'sLR', 'sMash', 'sButtons', 'sCounter', 'sPad'].includes(id)) setCue('');
     lastScreen = id;
   }
 }
@@ -132,6 +133,10 @@ const CONTROL_TEXT = {
   mash: '👊 Un botón gigante: ¡apretá rápido!',
   counter: '🔢 Un contador con + y −',
   buttons: '🔘 Botones en pantalla',
+  sling: '🎯 Gomera: tirá para atrás con el dedo y soltá',
+  slider: '↔️ Deslizá el dedo: tu paleta va justo donde está el dedo',
+  crank: '🔄 Girá el dedo en círculos sobre la pantalla',
+  draw: '✏️ Dibujá con el dedo (o elegí la respuesta)',
 };
 
 function render() {
@@ -238,7 +243,7 @@ function render() {
     case 'minigame': {
       practicing = false; $('practice').classList.add('hidden');
       if (!S.mg.players.includes(myId)) { waitWith('⚔️ ¡Duelo en la tele! Alentá 📺'); break; }
-      if (mgActiveKey !== S.mg.key) { mgActiveKey = S.mg.key; mashCount = 0; $('mashCount').textContent = '0'; builtButtons = null; meter = null; counter = { val: 0, open: false, sent: false }; renderCounter(); }
+      if (mgActiveKey !== S.mg.key) { mgActiveKey = S.mg.key; mashCount = 0; $('mashCount').textContent = '0'; builtButtons = null; meter = null; window.padResetAll(); counter = { val: 0, open: false, sent: false }; renderCounter(); }
       showControl(S.mg);
       break;
     }
@@ -342,6 +347,7 @@ function showControl(mg) {
   else if (ctl === 'lr') showScreen('sLR');
   else if (ctl === 'buttons') { buildButtons(mg); showScreen('sButtons'); }
   else if (ctl === 'counter') { renderCounter(); showScreen('sCounter'); }
+  else if (PAD_CONTROLS.includes(ctl)) window.padShow(mg);
   else {
     $('btnAction').classList.toggle('hidden', !mg.action);
     $('btnAction').textContent = mg.action || '';
