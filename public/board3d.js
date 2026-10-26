@@ -1,12 +1,13 @@
 // Tablero 3D: mapa de Buenos Aires con calles, casillas de distintas formas y barrios decorados.
 import * as THREE from 'three';
-import { makeTree, makeHouse, makeObelisco, makeFlag, makeLabel } from './models.js';
+import { makeTree, makeObelisco, makeFlag, makeLabel } from './models.js';
 import { makeKiosk, makeCasaRosada, makeFarol, makeBench, makeFountain, makeBusStop, makeArrow } from './props.js';
 import { tex } from './textures.js';
 import { scatterNature, wind, windFoliage } from './nature.js';
 import { decorMendoza, decorCosta, placer, cityBlock, rng } from './decor.js';
 import { decorBariloche, decorCordoba, decorSur, decorNorte } from './decor2.js';
-import { kit, repaint } from './kit.js';
+import { kit } from './kit.js';
+import { building, galponLadrillo, torreVidrio, torreMonumental, casitaChapa, edificioPorteno } from './buildings.js';
 import { heightAt } from './terrain.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -141,11 +142,18 @@ function kTree(i, purple) {
   });
   return t;
 }
-// Casitas de Caminito: casas de Kenney con las paredes y el techo de chapa repintados
-const HOUSES = ['suburban/building-type-a', 'suburban/building-type-c', 'suburban/building-type-f', 'suburban/building-type-h', 'suburban/building-type-k', 'suburban/building-type-o'];
-function kHouse(i, color, roof, w, h) {
-  const k = kit(HOUSES[i % HOUSES.length], 3.4, 'width');
-  return k ? repaint(k, { wall: color, roof }) : makeHouse(color, roof, w, h);
+// Casitas de chapa de Caminito, de colores, con balcón y techo de chapa a un agua
+function caminitoHouse(color, roof, w, h, d) {
+  return casitaChapa(color, roof, w, h, d);
+}
+// Casa de barrio de dos pisos (Almagro, Boedo): revoque y balcones; unas con terraza y local abajo, otras con techo de tejas
+function barrioHouse(color, i) {
+  const g = new THREE.Group();
+  g.add(i % 3 === 0 ? edificioPorteno(3.2, 3.4, 2.8, color, i) : building({
+    w: 3.2, d: 2.8, h: 3, wall: 'revoque', tint: color, floorH: 1.5, bay: 1.07, win: i % 2 ? ['ventanaVerde', 'ventanaCerrada'] : ['ventanaMarron', 'ventanaCerradaMarron'],
+    ground: 'puerta', balcony: 0.4, roof: 'gable', roofCell: 'tejas', roofTint: ['#b5583c', '#a8492f', '#c0603f'][i % 3], rise: 1.1, over: 0.25, cornice: false,
+  }));
+  return g;
 }
 // Kiosco: el puestito de siempre con la kiosquera y los exhibidores de Kenney adelante
 function kKiosk() {
@@ -160,20 +168,16 @@ function kKiosk() {
 }
 
 // ---------- Decorado de barrios ----------
-function makeWarehouse() { // Docks de ladrillo de Puerto Madero
+function makeWarehouse() { // Docks de ladrillo de Puerto Madero, con techos de chapa en serrucho
   const g = new THREE.Group();
-  const brick = std({ color: '#a8492f' }), dark = std({ color: '#5a2418' }), win = std({ color: '#1b2a4a' });
-  g.add(box(7, 3.6, 4, brick, 0, 1.8, 0));
-  for (let i = 0; i < 3; i++) { const r = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 4.1, 3), dark); r.rotation.z = Math.PI / 2; r.rotation.y = Math.PI / 2; r.position.set(-2.3 + i * 2.3, 3.6, 0); g.add(r); }
-  for (let i = 0; i < 5; i++) g.add(box(0.7, 1.2, 0.05, win, -2.6 + i * 1.3, 2, 2.03));
-  return shadowed(g);
+  g.add(galponLadrillo(7, 4, 3.6));
+  return g;
 }
+const towerTop = std({ color: '#d8dde2', metalness: 0.3, roughness: 0.5 });
 function makeTower(h, color = '#7fb7d9') {
   const g = new THREE.Group();
-  const glass = toy(color, { roughness: 0.1, metalness: 0.3, clearcoat: 1 });
-  g.add(box(3.2, h, 3.2, glass, 0, h / 2, 0));
-  for (let y = 1; y < h; y += 1.2) g.add(box(3.25, 0.08, 3.25, std({ color: '#e8eef2' }), 0, y, 0));
-  g.add(box(2.4, 0.6, 2.4, std({ color: '#d8dde2' }), 0, h + 0.3, 0));
+  g.add(torreVidrio(h, color));
+  g.add(box(2.4, 0.6, 2.4, towerTop, 0, h + 0.55, 0));
   return shadowed(g);
 }
 function makePuenteMujer() { // puente peatonal blanco con mástil inclinado
@@ -260,17 +264,18 @@ function makeSignpost(node, board) {
   return shadowed(g);
 }
 
-function makeTorreMonumental() { // la torre del reloj de Retiro
+const CLOCK = { face: std({ color: '#f7f1e0' }), hand: std({ color: '#1b1b1b' }), ring: std({ color: '#c9a227', metalness: 0.6, roughness: 0.35 }) };
+function makeTorreMonumental() { // la torre del reloj de Retiro: ladrillo, piedra y cúpula de cobre
   const g = new THREE.Group();
-  const brick = std({ color: '#b5583c' }), white = std({ color: '#f1ead8' });
-  g.add(box(2.4, 0.6, 2.4, white, 0, 0.3, 0));
-  g.add(box(1.8, 7.5, 1.8, brick, 0, 4.2, 0));
-  g.add(box(2.1, 0.3, 2.1, white, 0, 8.1, 0));
+  g.add(torreMonumental());
+  const faceGeo = new THREE.CircleGeometry(0.5, 24), ringGeo = new THREE.TorusGeometry(0.52, 0.05, 6, 24);
   for (let i = 0; i < 4; i++) {
-    const face = new THREE.Mesh(new THREE.CircleGeometry(0.55, 20), white);
-    face.position.set(Math.sin(i * Math.PI / 2) * 0.92, 7.2, Math.cos(i * Math.PI / 2) * 0.92); face.rotation.y = i * Math.PI / 2; g.add(face);
+    const a = i * Math.PI / 2, c = new THREE.Group();
+    c.position.set(Math.sin(a) * 0.93, 7.25, Math.cos(a) * 0.93); c.rotation.y = a;
+    c.add(new THREE.Mesh(faceGeo, CLOCK.face), new THREE.Mesh(ringGeo, CLOCK.ring));
+    const h1 = box(0.05, 0.36, 0.02, CLOCK.hand, 0, 0.14, 0.01), h2 = box(0.05, 0.26, 0.02, CLOCK.hand, 0.09, -0.05, 0.01); h2.rotation.z = 2.2;
+    c.add(h1, h2); g.add(c);
   }
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(1.25, 2, 4), std({ color: '#3f6b5a' })); roof.position.y = 9.25; roof.rotation.y = Math.PI / 4; g.add(roof);
   return shadowed(g);
 }
 
@@ -330,11 +335,11 @@ function decorBaires(group, anim, nodes) {
   // La Boca, abajo a la derecha: las casitas de colores de Caminito alrededor de la manzana
   const colors = ['#e14b3c', '#f2c230', '#2f86e0', '#2e9e48', '#ef8a17', '#b06ab3'];
   let i = 0;
-  cityBlock(place, 8, 0, 24, 15, rand, { step: 3.5, depth: 3, colors, make: (w, h, d, c) => { const k = i++; return kHouse(k, c, colors[(k + 3) % 6], 3.2, 3 + (k % 3) * 0.6); } });
+  cityBlock(place, 8, 0, 24, 15, rand, { step: 3.5, depth: 3, colors, make: (w, h, d, c) => { const k = i++; return caminitoHouse(c, colors[(k + 3) % 6], w, 3 + (k % 3) * 0.6, 2.6); } });
 
   // A la izquierda: la cancha y casas de barrio (Almagro y Boedo)
   const stadium = makeStadium(); stadium.scale.setScalar(0.75); stadium.name = 'cancha'; place(stadium, -38, -5, 9, 9);
-  for (let z = -22; z <= 22; z += 3.8) place.try(() => kHouse(i++, ['#e8d5b5', '#d9c7a8', '#f0e2c6', '#cbb898'][i % 4], '#a8492f', 3.2, 3.4), -30.5, z, 3.4, 3, Math.PI / 2);
+  for (let z = -22; z <= 22; z += 3.8) place.try(() => barrioHouse(['#e8d5b5', '#d9c7a8', '#f0e2c6', '#cbb898', '#c98f6f', '#a9b4bd'][i % 6], i++), -30.5, z, 3.4, 3, Math.PI / 2);
 
   // Árboles por todos lados, lejos de las calles
   for (let k = 0; k < 70; k++) {

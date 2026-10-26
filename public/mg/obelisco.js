@@ -1,7 +1,10 @@
 // Escena: Subí al Obelisco — una cara del Obelisco por jugador, con macetas y palomas que caen de arriba.
 import * as THREE from 'three';
 import { tex } from '../textures.js';
-import { plane, std, rowX, fitSpan } from './util.js';
+import { plane, std, rowX, fitSpan, tbox } from './util.js';
+import { edificioPorteno } from '../buildings.js';
+
+const FACADES = ['#e8dcc4', '#d9c7a8', '#efe6d3', '#cdb9a0', '#c98f6f', '#b8b3a8', '#e2cfae', '#a9b4bd'];
 
 const GAP = 2.8, SCALE = 0.55; // metros del juego -> unidades de la escena
 
@@ -11,13 +14,28 @@ export default {
     const { group, players } = ctx;
     const n = players.length;
     group.add(plane(90, 60, std({ map: tex.asphalt([20, 14]) })));
+    // La 9 de Julio: rayas de los carriles, la plaza al pie y una fila de edificios de fondo
+    const lane = std({ color: '#ecebe6' });
+    for (let x = -40; x <= 40; x += 4.5) for (const z of [5, 9.5]) group.add(plane(2.2, 0.16, lane, { x, y: 0.015, z }));
+    group.add(plane(Math.max(3, n) * GAP + 6, 5, std({ map: tex.baldosa([6, 3]) }), { y: 0.02, z: -0.6 }));
+    for (let i = 0, x = -36; x <= 36; i++, x += 5.6) {
+      const h = 7 + ((i * 37) % 11), b = edificioPorteno(5.2, h, 4, FACADES[(i * 5) % FACADES.length], 900 + i);
+      b.position.set(x, 0, -16 - (i % 2) * 1.5); group.add(b);
+    }
+    // Una franja del obelisco (alta, de piedra clara) detrás de cada trepador, con la ventanita de arriba
+    const H = 30 * SCALE + 3;
+    const stone = std({ map: tex.revoque(), color: '#f1ebdc' }), joint = std({ color: '#d8cfba' }), win = std({ color: '#2a2d33', roughness: 0.4 });
+    const tipGeo = new THREE.ConeGeometry(1.5, 2, 4);
+    // Las juntas entre los bloques de piedra (una sola pieza para todas)
+    const nj = Math.floor((H - 0.1) / 2.4), joints = new THREE.InstancedMesh(new THREE.BoxGeometry(2.12, 0.04, 0.62), joint, nj * n), o = new THREE.Object3D();
+    for (let i = 0; i < n; i++) for (let k = 0; k < nj; k++) { o.position.set(rowX(i, n, GAP), (k + 1) * 2.4, -0.6); o.updateMatrix(); joints.setMatrixAt(i * nj + k, o.matrix); }
+    group.add(joints);
     const slots = new Map();
     players.forEach((p, i) => {
       const x = rowX(i, n, GAP);
-      // Una franja del obelisco (alta y blanca) detrás de cada trepador
-      const col = new THREE.Mesh(new THREE.BoxGeometry(2.1, 30 * SCALE + 3, 0.6), std({ color: '#efe9da' }));
-      col.position.set(x, (30 * SCALE + 3) / 2, -0.6); group.add(col);
-      const tip = new THREE.Mesh(new THREE.ConeGeometry(1.5, 2, 4), std({ color: '#efe9da' })); tip.rotation.y = Math.PI / 4; tip.position.set(x, 30 * SCALE + 4, -0.6); group.add(tip);
+      const col = tbox(2.1, H, 0.6, stone, 1.6, { x, y: H / 2, z: -0.6 }); group.add(col);
+      group.add(tbox(0.3, 0.45, 0.04, win, 1, { x: x + 0.45, y: H - 1.2, z: -0.29 }));
+      const tip = new THREE.Mesh(tipGeo, stone); tip.rotation.y = Math.PI / 4; tip.position.set(x, 30 * SCALE + 4, -0.6); group.add(tip);
       // Una línea en el medio para ver de qué lado está cada uno
       const mid = new THREE.Mesh(new THREE.BoxGeometry(0.04, 30 * SCALE + 3, 0.02), std({ color: '#c9bfa8' })); mid.position.set(x, (30 * SCALE + 3) / 2, -0.29); group.add(mid);
       const g = ctx.addChar(p, x, 0, 0.8);

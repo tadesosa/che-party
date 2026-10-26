@@ -1,5 +1,7 @@
 // Modelos 3D hechos con formas simples (sin archivos externos), estilo low-poly.
 import * as THREE from 'three';
+import { casitaChapa } from './buildings.js';
+import { tex, uvBox, uvScale } from './textures.js';
 
 const mat = (color, opts = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0, flatShading: true, ...opts });
 const M = {
@@ -52,24 +54,16 @@ export function makeTree(purple) {
   return g;
 }
 
-// Casita estilo Caminito (La Boca)
+// Casita de chapa estilo Caminito (La Boca): children[0] son las paredes, por si hay que repintarlas
 export function makeHouse(color, roofColor, w = 3, h = 3.2) {
-  const g = new THREE.Group();
-  g.add(mesh(new THREE.BoxGeometry(w, h, 2.4), mat(color), { y: h / 2 }));
-  g.add(mesh(new THREE.BoxGeometry(w + 0.3, 0.25, 2.8), mat(roofColor), { y: h + 0.12, rx: 0.08 }));
-  const win = mat('#1b2a4a');
-  for (const sx of [-0.6, 0.6]) g.add(mesh(new THREE.BoxGeometry(0.6, 0.8, 0.05), win, { x: sx * (w / 3), y: h * 0.65, z: 1.21 }));
-  g.add(mesh(new THREE.BoxGeometry(0.75, 1.4, 0.05), mat('#ffffff'), { y: 0.7, z: 1.21 }));
-  // balconcito
-  g.add(mesh(new THREE.BoxGeometry(w * 0.6, 0.1, 0.5), mat('#2b2b2b'), { y: h * 0.45, z: 1.4 }));
-  return g;
+  return casitaChapa(color, roofColor, w, h);
 }
 
 export function makeObelisco() {
   const g = new THREE.Group();
-  const stone = mat('#f1ead8');
-  g.add(mesh(new THREE.BoxGeometry(3, 0.4, 3), mat('#cfc6b0'), { y: 0.2 }));
-  g.add(mesh(new THREE.CylinderGeometry(0.55, 0.85, 9, 4), stone, { y: 4.9, ry: Math.PI / 4 }));
+  const stone = mat('#f4efe4', { map: tex.revoque(), flatShading: false });
+  g.add(mesh(uvBox(new THREE.BoxGeometry(3, 0.4, 3), 1), mat('#ffffff', { map: tex.granito(), flatShading: false }), { y: 0.2 }));
+  g.add(mesh(uvScale(new THREE.CylinderGeometry(0.55, 0.85, 9, 4), 2, 6), stone, { y: 4.9, ry: Math.PI / 4 }));
   g.add(mesh(new THREE.ConeGeometry(0.55, 1.0, 4), stone, { y: 9.9, ry: Math.PI / 4 }));
   const win = mat('#3a3a3a');
   g.add(mesh(new THREE.BoxGeometry(0.18, 0.3, 0.05), win, { y: 8.6, z: 0.6 }));

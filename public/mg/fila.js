@@ -1,7 +1,7 @@
 // Escena: La Fila del Banco — el hall de un banco, una fila por jugador y el guardia que se da vuelta.
 import * as THREE from 'three';
 import { tex } from '../textures.js';
-import { plane, std, rowX, walkAnim, canvasPlane } from './util.js';
+import { plane, std, rowX, walkAnim, canvasPlane, tbox } from './util.js';
 
 const GAP = 2.2, START = 9, END = -9; // la ventanilla queda al fondo (z negativa)
 
@@ -23,16 +23,46 @@ export default {
   build(ctx) {
     const { group, players } = ctx;
     const n = players.length, w = Math.max(3, n) * GAP + 4;
-    group.add(plane(w + 30, 40, std({ map: tex.baldosa([12, 14]) })));
+    // Hall de banco antiguo: piso de mármol en damero, boiserie, pilastras y el reloj
+    group.add(plane(w + 30, 40, std({ map: tex.marmol([(w + 30) / 2.4, 40 / 2.4]), color: '#cfc8bc', roughness: 0.35 })));
+    const wood = std({ map: tex.boiserie(), color: '#7a4a2b', roughness: 0.55 }), marble = std({ map: tex.granito(), color: '#efe9de', roughness: 0.35 });
     // Mostrador con ventanillas
-    const counter = new THREE.Mesh(new THREE.BoxGeometry(w, 1.4, 1), std({ map: tex.wood([4, 1]) })); counter.position.set(0, 0.7, END - 1.2); group.add(counter);
+    group.add(tbox(w, 1.3, 1, wood, 1.1, { y: 0.65, z: END - 1.2 }));
+    group.add(tbox(w + 0.2, 0.1, 1.2, marble, 1.5, { y: 1.35, z: END - 1.2 }));
     const glass = new THREE.Mesh(new THREE.BoxGeometry(w, 1.6, 0.06), new THREE.MeshPhysicalMaterial({ color: '#cfe8ff', transparent: true, opacity: 0.35, roughness: 0.05 })); glass.position.set(0, 2.2, END - 1.2); group.add(glass);
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(w + 30, 7, 0.4), std({ color: '#e9e2d0' })); wall.position.set(0, 3.5, END - 4); group.add(wall);
+    const brass = std({ color: '#c9a227', metalness: 0.7, roughness: 0.3 });
+    for (let i = 0; i <= Math.max(3, n); i++) group.add(tbox(0.08, 1.7, 0.1, brass, 1, { x: -w / 2 + i * w / Math.max(3, n), y: 2.2, z: END - 1.2 }));
+    group.add(tbox(w, 0.08, 0.12, brass, 1, { y: 3.02, z: END - 1.2 }));
+    for (let i = 0; i < n; i++) {
+      const cj = canvasPlane(1.1, 0.32, (x, cw, ch) => { x.fillStyle = '#1b2a4a'; x.fillRect(0, 0, cw, ch); x.fillStyle = '#f6d36b'; x.font = `bold ${ch * 0.62}px "Trebuchet MS", sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('CAJA ' + (i + 1), cw / 2, ch / 2 + 2); }, 256);
+      cj.material.transparent = false; cj.position.set(rowX(i, n, GAP), 3.3, END - 1.17); group.add(cj);
+    }
+    // La pared del fondo
+    group.add(tbox(w + 30, 1.6, 0.4, wood, 1.1, { y: 0.8, z: END - 4 }));
+    group.add(tbox(w + 30, 5.4, 0.4, std({ map: tex.revoque(), color: '#e6d9bd' }), 1.8, { y: 4.3, z: END - 4 }));
+    group.add(tbox(w + 30, 0.12, 0.5, wood, 1, { y: 1.62, z: END - 3.95 }));
+    group.add(tbox(w + 30, 0.4, 0.6, std({ map: tex.revoque(), color: '#f4ecd8' }), 1, { y: 6.9, z: END - 3.9 }));
+    const pil = std({ map: tex.revoque(), color: '#f4ecd8' });
+    for (let x = -w / 2 - 6; x <= w / 2 + 6; x += 4.5) group.add(tbox(0.6, 5.4, 0.3, pil, 1.2, { x, y: 4.3, z: END - 3.7 }));
+    // Reloj de pared
+    const clock = new THREE.Group();
+    clock.add(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.12, 28), brass));
+    const face = new THREE.Mesh(new THREE.CircleGeometry(0.66, 28), std({ color: '#fbf6e8' })); face.rotation.x = -Math.PI / 2; face.position.y = 0.07; clock.add(face);
+    const hand = std({ color: '#1b1b1b' });
+    const h1 = tbox(0.05, 0.02, 0.5, hand, 1, { y: 0.09, z: -0.2 }), h2 = tbox(0.05, 0.02, 0.36, hand, 1, { x: 0.12, y: 0.09, z: 0.05 }); h2.rotation.y = 1.9;
+    clock.add(h1, h2);
+    clock.rotation.x = Math.PI / 2; clock.position.set(-w / 2 + 1, 4.6, END - 3.72); group.add(clock);
+    // Plantas en macetas a los costados
+    const pot = std({ color: '#b5543a', roughness: 0.7 }), leaf = std({ color: '#3f8a45', flatShading: true });
+    for (const x of [-w / 2 - 1.5, w / 2 + 1.5]) {
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.35, 0.8, 12), pot); p.position.set(x, 0.4, END - 2.8); group.add(p);
+      for (const [dx, dy, r] of [[0, 1.3, 0.6], [0.3, 1.7, 0.4], [-0.3, 1.6, 0.45]]) { const l = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), leaf); l.position.set(x + dx, dy, END - 2.8); group.add(l); }
+    }
     const sign = canvasPlane(6, 1.1, (x, cw, ch) => {
       x.fillStyle = '#1b2a4a'; x.fillRect(0, 0, cw, ch);
       x.fillStyle = '#f6b40e'; x.font = `bold ${ch * 0.55}px "Trebuchet MS", sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('🏦 BANCO CHE', cw / 2, ch / 2 + 2);
     }, 512);
-    sign.position.set(0, 5.3, END - 3.75); group.add(sign);
+    sign.position.set(0, 5.3, END - 3.4); group.add(sign);
     // Cintas de la fila y postes
     for (let i = 0; i <= n; i++) {
       const x = rowX(i, n + 1, GAP);
@@ -40,7 +70,7 @@ export default {
       for (const z of [START, (START + END) / 2, END]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1, 8), std({ color: '#c9a227', metalness: 0.7, roughness: 0.3 })); post.position.set(x, 0.5, z); group.add(post); }
     }
     const guard = makeGuard(); guard.position.set(0, 0, END - 2.6); group.add(guard);
-    const light = new THREE.Mesh(new THREE.SphereGeometry(0.35, 14, 10), new THREE.MeshBasicMaterial({ color: '#2e9e48' })); light.position.set(w / 2 - 1, 4.2, END - 3.7); group.add(light);
+    const light = new THREE.Mesh(new THREE.SphereGeometry(0.35, 14, 10), new THREE.MeshBasicMaterial({ color: '#2e9e48' })); light.position.set(w / 2 - 1, 4.2, END - 3.4); group.add(light);
     const lanes = new Map();
     players.forEach((p, i) => { const x = rowX(i, n, GAP); const g = ctx.addChar(p, x, START); g.rotation.y = Math.PI; lanes.set(p.id, { x, g, z: START }); });
     return { guard, light, lanes, rot: Math.PI };

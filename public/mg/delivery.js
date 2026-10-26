@@ -1,8 +1,8 @@
 // Escena: Delivery en Moto — una manzana de Buenos Aires con la pizzería en el medio, casas alrededor y autos cruzando.
 import * as THREE from 'three';
-import { makeHouse } from '../models.js';
+import { makeHouse, makeTree } from '../models.js';
 import { makeTaxi } from '../props.js';
-import { tex } from '../textures.js';
+import { tex, uvScale } from '../textures.js';
 import { follow, face, plane, std } from './util.js';
 
 const COLORS = ['#e14b3c', '#f2c230', '#2f86e0', '#2e9e48', '#b06ab3', '#ef8a17'];
@@ -11,14 +11,37 @@ export default {
   camera: { pos: [0, 19, 13], look: [0, 0, 0.5] },
   build(ctx) {
     const { group, players } = ctx;
-    group.add(plane(90, 70, std({ map: tex.baldosa([30, 24]) })));
+    // Manzanas con pasto, veredas de baldosa y calles de asfalto con rayas
+    group.add(plane(90, 70, std({ map: tex.grass([24, 18]) })));
+    const vereda = std({ map: tex.baldosa([1, 1]) }), line = std({ color: '#f2f0ea' });
     for (const v of [-5, 5]) {
+      group.add(plane(30, 3.6, std({ map: tex.baldosa([12, 1.5]) }), { y: 0.012, z: v }), plane(3.6, 30, std({ map: tex.baldosa([1.5, 12]) }), { y: 0.013, x: v }));
       group.add(plane(30, 2.2, std({ map: tex.asphalt([10, 1]) }), { y: 0.02, z: v }));
       group.add(plane(2.2, 30, std({ map: tex.asphalt([1, 10]) }), { y: 0.021, x: v }));
     }
-    // Pizzería en el centro
-    const shop = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.3, 1.6, 16), std({ color: '#e14b3c' })); shop.position.y = 0.8; group.add(shop);
-    const sign = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.12, 16), std({ color: '#f6d36b' })); sign.position.y = 1.9; group.add(sign);
+    // Rayas de las calles: una sola pieza para todas
+    const dashes = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.9, 0.08).rotateX(-Math.PI / 2), line, 60), o = new THREE.Object3D();
+    let nd = 0;
+    for (const v of [-5, 5]) for (let t = -14; t <= 14; t += 2) {
+      o.rotation.set(0, 0, 0); o.position.set(t, 0.025, v); o.updateMatrix(); dashes.setMatrixAt(nd++, o.matrix);
+      o.rotation.set(0, Math.PI / 2, 0); o.position.set(v, 0.026, t); o.updateMatrix(); dashes.setMatrixAt(nd++, o.matrix);
+    }
+    dashes.receiveShadow = true; group.add(dashes);
+    group.add(plane(4, 4, vereda, { y: 0.015 }));
+    // Pizzería en el centro: redonda, de ladrillo, con toldo a rayas y el cartel alrededor
+    const shop = new THREE.Mesh(uvScale(new THREE.CylinderGeometry(1.2, 1.3, 1.6, 20), 6, 1.4), std({ map: tex.ladrillo(), roughness: 0.85 })); shop.position.y = 0.8; group.add(shop);
+    const stripes = document.createElement('canvas'); stripes.width = 256; stripes.height = 16;
+    const sx = stripes.getContext('2d'); for (let i = 0; i < 16; i++) { sx.fillStyle = i % 2 ? '#f4f1e8' : '#c0392b'; sx.fillRect(i * 16, 0, 16, 16); }
+    const stripeTex = new THREE.CanvasTexture(stripes); stripeTex.colorSpace = THREE.SRGBColorSpace;
+    const awning = new THREE.Mesh(new THREE.ConeGeometry(1.75, 0.8, 20, 1, true), std({ map: stripeTex, side: THREE.DoubleSide })); awning.position.y = 2.0; group.add(awning);
+    const label = document.createElement('canvas'); label.width = 1024; label.height = 64;
+    const lx = label.getContext('2d'); lx.fillStyle = '#f6d36b'; lx.fillRect(0, 0, 1024, 64); lx.fillStyle = '#c0392b'; lx.font = 'bold 44px "Trebuchet MS", sans-serif'; lx.textBaseline = 'middle';
+    for (let i = 0; i < 3; i++) lx.fillText('🍕 PIZZERÍA', 30 + i * 340, 34);
+    const labelTex = new THREE.CanvasTexture(label); labelTex.colorSpace = THREE.SRGBColorSpace;
+    const sign = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.3, 24, 1, true), std({ map: labelTex })); sign.position.y = 2.55; group.add(sign);
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.04, 24), std({ color: '#c0392b' })); top.position.y = 2.7; group.add(top);
+    // Árboles en las esquinas de afuera
+    for (const [x, z] of [[-13, -13], [13, -13], [-13, 13], [13, 13]]) { const t = makeTree(false); t.scale.setScalar(0.8); t.position.set(x, 0, z); group.add(t); }
     // Casas en los bordes
     const doors = [];
     for (const x of [-8.5, -2, 2, 8.5]) for (const z of [-8.5, 8.5]) doors.push([x, z]);

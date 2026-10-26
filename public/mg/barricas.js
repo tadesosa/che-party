@@ -1,7 +1,7 @@
 // Escena: Las Barricas — una bodega con cinco barricas que ruedan para mezclarse. Una tiene el racimo dorado.
 import * as THREE from 'three';
 import { tex } from '../textures.js';
-import { plane, std, rowX, canvasPlane } from './util.js';
+import { plane, std, rowX, canvasPlane, tbox } from './util.js';
 
 const N = 5, GAP = 2.4;
 
@@ -25,9 +25,17 @@ export default {
     const { group, players } = ctx;
     const n = players.length;
     group.add(plane(60, 40, std({ map: tex.cobble([20, 14]) })));
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(30, 7, 0.4), std({ color: '#b9a585' })); wall.position.set(0, 3.5, -4); group.add(wall);
-    // Arcos de la bodega
-    for (let i = 0; i < 4; i++) { const arch = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.25, 6, 16, Math.PI), std({ color: '#8a7355' })); arch.position.set(-7.5 + i * 5, 3.5, -3.75); group.add(arch); }
+    // La cava: pared de piedra abajo y ladrillo arriba, arcos de ladrillo con la oscuridad de las galerías
+    group.add(tbox(30, 1.4, 0.5, std({ map: tex.piedra(), color: '#d8ccb8', roughness: 0.9 }), 1.2, { y: 0.7, z: -4 }));
+    group.add(tbox(30, 5.6, 0.4, std({ map: tex.ladrillo(), color: '#e8cdb8', roughness: 0.9 }), 1.2, { y: 4.2, z: -4 }));
+    const archMat = std({ map: tex.ladrillo([6, 1]), color: '#d6b49a' }), dark = new THREE.MeshBasicMaterial({ color: '#1e1610' });
+    for (let i = 0; i < 4; i++) {
+      const x = -7.5 + i * 5;
+      const hole = new THREE.Mesh(new THREE.CircleGeometry(1.45, 20, 0, Math.PI), dark); hole.position.set(x, 3.5, -3.78); group.add(hole);
+      group.add(tbox(2.9, 2.1, 0.02, dark, 1, { x, y: 2.45, z: -3.78 }));
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.25, 6, 20, Math.PI), archMat); arch.position.set(x, 3.5, -3.75); group.add(arch);
+      for (const sx of [-1, 1]) group.add(tbox(0.5, 2.1, 0.4, archMat, 0.8, { x: x + sx * 1.6, y: 2.45, z: -3.75 }));
+    }
     const barrels = [];
     for (let i = 0; i < N; i++) {
       const b = makeBarrel(); b.position.set(rowX(i, N, GAP), 0, 0); group.add(b); barrels.push(b);

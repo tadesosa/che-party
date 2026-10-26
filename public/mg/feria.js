@@ -3,16 +3,28 @@ import * as THREE from 'three';
 import { makeTree } from '../models.js';
 import { makeFarol } from '../props.js';
 import { tex } from '../textures.js';
+import { edificioPorteno } from '../buildings.js';
 import { plane, std, rowX, makeMeter, setNeedle } from './util.js';
 
 const GAP = 3.4;
 const GOODS = ['#c9a227', '#8a5a33', '#b5446e', '#4a6fa5', '#2e9e48', '#c0392b'];
 
+// Toldos a rayas de los puestos
+function stripes(color) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 8;
+  const x = c.getContext('2d'); for (let i = 0; i < 8; i++) { x.fillStyle = i % 2 ? '#f4f1e8' : color; x.fillRect(i * 16, 0, 16, 8); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return std({ map: t });
+}
+const AWN = [stripes('#2f86e0'), stripes('#e14b3c')];
+const SAN_TELMO = ['#e9c9a0', '#d6a77a', '#f0dfc4', '#c98f6f', '#e2cfae', '#b8b3a8'];
+
 function makeStall(i) {
   const g = new THREE.Group();
   const table = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.12, 1.2), std({ color: '#f4efe2' })); table.position.y = 0.9; g.add(table);
   for (const x of [-1.1, 1.1]) for (const z of [-0.5, 0.5]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.9, 6), std({ color: '#555' })); l.position.set(x, 0.45, z); g.add(l); }
-  const awn = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.08, 1.6), std({ color: i % 2 ? '#e14b3c' : '#2f86e0' })); awn.position.y = 2.6; g.add(awn);
+  const awn = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.08, 1.6), AWN[i % 2]); awn.position.y = 2.6; g.add(awn);
+  const flap = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.28, 0.03), AWN[i % 2]); flap.position.set(0, 2.46, 0.8); g.add(flap);
   for (const x of [-1.2, 1.2]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.6, 6), std({ color: '#ddd' })); p.position.set(x, 1.3, -0.6); g.add(p); }
   // Chucherías: un sifón, un farol viejo y una caja
   const sifon = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.6, 12), new THREE.MeshPhysicalMaterial({ color: '#5fb3ff', transparent: true, opacity: 0.7, roughness: 0.1 })); sifon.position.set(-0.7, 1.26, 0); g.add(sifon);
@@ -28,6 +40,8 @@ export default {
     const n = players.length;
     group.add(plane(80, 50, std({ map: tex.cobble([30, 20]) })));
     for (const x of [-n * GAP / 2 - 4, n * GAP / 2 + 4]) { const t = makeTree(x > 0); t.position.set(x, 0, -3); group.add(t); const f = makeFarol(); f.position.set(x * 0.8, 0, 2); group.add(f); }
+    // Las casonas de San Telmo alrededor de la plaza Dorrego
+    for (let i = 0, x = -24; x <= 24; i++, x += 4.2) { const b = edificioPorteno(4, 3.4 + (i % 3) * 1.3, 3.2, SAN_TELMO[i % SAN_TELMO.length], 300 + i); b.position.set(x, 0, -10); group.add(b); }
     const slots = new Map();
     players.forEach((p, i) => {
       const x = rowX(i, n, GAP);

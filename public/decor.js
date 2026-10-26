@@ -1,9 +1,10 @@
 // Decorado de los tableros Mendoza y La Costa, y lo que comparten los tres: el acomodador (que no deja
 // poner nada encima de los caminos) y las manzanas de edificios.
 import * as THREE from 'three';
-import { makeTree, makeHouse, makeFlag } from './models.js';
+import { makeTree, makeFlag } from './models.js';
 import { makeFountain, makeFarol, makeBench } from './props.js';
-import { tex } from './textures.js';
+import { tex, uvBox, uvScale } from './textures.js';
+import { edificioPorteno, casaAdobe, bodega, hotelLadrillo, chaletPiedra } from './buildings.js';
 import { heightAt, makeTerrain } from './terrain.js';
 
 const std = (opts) => new THREE.MeshStandardMaterial({ roughness: 0.8, ...opts });
@@ -77,31 +78,15 @@ export function placer(group, nodes, terrain) {
 }
 
 // ---------- Edificios ----------
-const winTexCache = new Map();
-function windowsTex(cols, rows) {
-  const k = cols + 'x' + rows;
-  if (winTexCache.has(k)) return winTexCache.get(k);
-  const c = document.createElement('canvas'); c.width = c.height = 64;
-  const x = c.getContext('2d');
-  x.fillStyle = '#ffffff'; x.fillRect(0, 0, 64, 64);
-  x.fillStyle = '#3b4a63'; x.fillRect(18, 16, 28, 34);
-  x.fillStyle = '#c9d6e6'; x.fillRect(20, 18, 11, 14);
-  x.fillStyle = '#d8d0c4'; x.fillRect(14, 50, 36, 5);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(cols, rows);
-  winTexCache.set(k, t);
-  return t;
-}
-const roofMat = std({ color: '#8c8478' });
-// Edificio porteño: caja con ventanas, cornisa y un tanque de agua arriba
+// Edificio porteño: revoque o ladrillo, ventanas con postigos, balcones, local con toldo abajo y tanque arriba.
+// Es una sola pieza con el material compartido de las fachadas (ver buildings.js).
 export function makeEdificio(w, h, d, color) {
   const g = new THREE.Group();
-  const wall = std({ color, map: windowsTex(Math.max(1, Math.round(w / 1.1)), Math.max(1, Math.round(h / 1.3))) });
-  g.add(box(w, h, d, wall, 0, h / 2, 0));
-  g.add(box(w + 0.2, 0.25, d + 0.2, roofMat, 0, h + 0.12, 0));
-  if (h > 4) { const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.7, 10), std({ color: '#b7b2a8' })); tank.position.set(w * 0.2, h + 0.6, -d * 0.15); g.add(tank); }
-  return shadowed(g);
+  g.add(edificioPorteno(w, h, d, color));
+  return g;
 }
+// Piedra compartida (con las coordenadas en unidades del mundo: ver uvBox)
+const stoneBox = (w, h, d, x, y, z, mat, size = 1.2) => { const m = new THREE.Mesh(uvBox(new THREE.BoxGeometry(w, h, d), size), mat); m.position.set(x, y, z); return m; };
 const FACADES = ['#e8dcc4', '#d9c7a8', '#efe6d3', '#cdb9a0', '#c98f6f', '#b8b3a8', '#e2cfae', '#a9b4bd'];
 // Manzana: un anillo de edificios mirando a las cuatro calles y un patio en el medio.
 // La cámara sigue al jugador desde abajo (z más grande), así que lo que puede taparlo es lo que queda
@@ -142,22 +127,16 @@ function makeVineRow(len) {
   }
   return shadowed(g);
 }
+const BARREL = { wood: std({ map: tex.madera([3, 1]), color: '#9a6538', roughness: 0.7 }), hoop: std({ color: '#3a3a3a', metalness: 0.5, roughness: 0.4 }) };
 function makeBodega() {
   const g = new THREE.Group();
-  const wall = std({ color: '#efe3cc' }), roof = std({ color: '#a8492f' }), wood = std({ color: '#7a4a2b' });
-  g.add(box(7, 3.2, 4, wall, 0, 1.6, 0));
-  const r = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 7.2, 4, 1, false, Math.PI / 4), roof);
-  r.rotation.z = Math.PI / 2; r.scale.set(1, 1, 0.75); r.position.y = 3.4; g.add(r);
-  for (let i = 0; i < 3; i++) {
-    const arch = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.1, 16, 1, false, 0, Math.PI), wood);
-    arch.rotation.x = Math.PI / 2; arch.rotation.z = Math.PI; arch.position.set(-2 + i * 2, 1.4, 2.02); g.add(arch);
-    g.add(box(1.1, 1.4, 0.08, wood, -2 + i * 2, 0.7, 2.02));
-  }
+  g.add(bodega(7, 4, 3.2));
   // Barriles
+  const bGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.9, 14), hGeo = new THREE.TorusGeometry(0.43, 0.03, 6, 16);
   for (let i = 0; i < 4; i++) {
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.9, 14), toy('#8a5530'));
+    const barrel = new THREE.Mesh(bGeo, BARREL.wood);
     barrel.rotation.z = Math.PI / 2; barrel.position.set(-1.8 + i * 1.1, 0.45, 2.9); g.add(barrel);
-    for (const dx of [-0.3, 0.3]) { const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.43, 0.03, 6, 16), std({ color: '#3a3a3a' })); hoop.rotation.y = Math.PI / 2; hoop.position.set(-1.8 + i * 1.1 + dx, 0.45, 2.9); g.add(hoop); }
+    for (const dx of [-0.3, 0.3]) { const hoop = new THREE.Mesh(hGeo, BARREL.hoop); hoop.rotation.y = Math.PI / 2; hoop.position.set(-1.8 + i * 1.1 + dx, 0.45, 2.9); g.add(hoop); }
   }
   return shadowed(g);
 }
@@ -165,7 +144,7 @@ function makeCerroGloria() {
   const g = new THREE.Group();
   const hill = new THREE.Mesh(new THREE.SphereGeometry(6, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), std({ color: '#9c8a5a', flatShading: true }));
   hill.scale.y = 0.55; g.add(hill);
-  g.add(box(2.4, 1.6, 2.4, std({ color: '#b8ab8e' }), 0, 3.9, 0));
+  g.add(stoneBox(2.4, 1.6, 2.4, 0, 3.9, 0, std({ map: tex.piedra(), color: '#efe6d6', roughness: 0.9 })));
   const statue = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.6, 2.2, 8), toy('#6f7f63', { metalness: 0.6 }));
   statue.position.y = 5.8; g.add(statue);
   const wing = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.6, 6), toy('#6f7f63', { metalness: 0.6 }));
@@ -174,9 +153,9 @@ function makeCerroGloria() {
 }
 function makeCristo() { // Cristo Redentor de los Andes, en la cumbre
   const g = new THREE.Group();
-  const stone = std({ color: '#a59c8c', flatShading: true }), bronze = toy('#7d8a6a', { metalness: 0.6 });
-  g.add(box(2, 1.2, 2, stone, 0, 0.6, 0));
-  const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 2.6, 8), stone); ped.position.y = 2.5; g.add(ped);
+  const stone = std({ map: tex.piedra(), color: '#d8d0c4', roughness: 0.9 }), bronze = toy('#7d8a6a', { metalness: 0.6 });
+  g.add(stoneBox(2, 1.2, 2, 0, 0.6, 0, stone));
+  const ped = new THREE.Mesh(uvScale(new THREE.CylinderGeometry(0.5, 0.8, 2.6, 8), 3, 2), stone); ped.position.y = 2.5; g.add(ped);
   const body = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.45, 2.2, 10), bronze); body.position.y = 4.9; g.add(body);
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 10), bronze); head.position.y = 6.25; g.add(head);
   g.add(box(0.15, 1.9, 0.15, bronze, 0.75, 5.5, 0)); // la cruz
@@ -185,8 +164,8 @@ function makeCristo() { // Cristo Redentor de los Andes, en la cumbre
 }
 function makePortones() { // Portones del Parque San Martín
   const g = new THREE.Group();
-  const stone = std({ color: '#d9d2c3' }), iron = toy('#2a3340');
-  for (const x of [-2.2, 2.2]) { g.add(box(0.8, 3.6, 0.8, stone, x, 1.8, 0)); const top = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10), toy('#c9a227', { metalness: 0.7 })); top.position.set(x, 3.9, 0); g.add(top); }
+  const stone = std({ map: tex.piedra(), color: '#f4eee2', roughness: 0.9 }), iron = toy('#2a3340');
+  for (const x of [-2.2, 2.2]) { g.add(stoneBox(0.8, 3.6, 0.8, x, 1.8, 0, stone, 0.9)); const top = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10), toy('#c9a227', { metalness: 0.7 })); top.position.set(x, 3.9, 0); g.add(top); }
   const arch = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.08, 6, 24, Math.PI), iron); arch.position.y = 3.2; g.add(arch);
   for (let i = -6; i <= 6; i++) g.add(box(0.05, 2.6, 0.05, iron, i * 0.3, 1.3, 0));
   return shadowed(g);
@@ -207,13 +186,10 @@ function makeAlamo() { // álamo: alto y finito, como los de las acequias
   const top = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 3.2, 4, 8), std({ color: '#6f9a3a', flatShading: true })); top.material.userData.foliage = true; top.position.y = 3; g.add(top);
   return shadowed(g);
 }
-function makeAdobe(color) { // casita baja de adobe con techo plano
+export function makeAdobe(color) { // casita baja de adobe con techo plano y vigas
   const g = new THREE.Group();
-  g.add(box(2.6, 2, 2.2, std({ color }), 0, 1, 0));
-  g.add(box(2.9, 0.2, 2.5, std({ color: '#8a6a4a' }), 0, 2.1, 0));
-  g.add(box(0.7, 1.3, 0.05, std({ color: '#6b4a2b' }), 0, 0.65, 1.11));
-  g.add(box(0.6, 0.6, 0.05, std({ color: '#1b2a4a' }), 0.8, 1.2, 1.11));
-  return shadowed(g);
+  g.add(casaAdobe(color, 2.6, 2.2, 2));
+  return g;
 }
 function makeRockPile(n, seed) {
   const g = new THREE.Group();
@@ -305,15 +281,18 @@ function makeLabelish(text) {
 }
 
 // ---------- La Costa ----------
-function makeTorreon() {
+function makeTorreon() { // el Torreón del Monje: piedra, almenas, ventanas angostas y techo cónico de tejas
   const g = new THREE.Group();
-  const stone = std({ color: '#c9b79c', flatShading: true }), roof = toy('#b5523b');
+  const stone = std({ map: tex.piedra(), color: '#f0e4d0', roughness: 0.9 }), roof = std({ map: tex.tejas(), color: '#c0603f', roughness: 0.7 });
   const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(3, 0), std({ color: '#7d7468', flatShading: true }));
   rock.scale.set(1.4, 0.6, 1.1); rock.position.y = 0.8; g.add(rock);
-  g.add(box(4.5, 3, 3, stone, 0, 3.6, 0));
-  const tower = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.2, 6, 10), stone); tower.position.set(1.6, 5, 0); g.add(tower);
-  const cone = new THREE.Mesh(new THREE.ConeGeometry(1.4, 2, 10), roof); cone.position.set(1.6, 9, 0); g.add(cone);
-  for (let i = 0; i < 6; i++) g.add(box(0.5, 0.5, 0.5, stone, -2 + i * 0.6, 5.35, 1.3));
+  g.add(stoneBox(4.5, 3, 3, 0, 3.6, 0, stone));
+  const tower = new THREE.Mesh(uvScale(new THREE.CylinderGeometry(1.1, 1.2, 6, 14), 6, 5), stone); tower.position.set(1.6, 5, 0); g.add(tower);
+  const cone = new THREE.Mesh(uvScale(new THREE.ConeGeometry(1.4, 2, 14), 6, 2), roof); cone.position.set(1.6, 9, 0); g.add(cone);
+  for (let i = 0; i < 6; i++) g.add(stoneBox(0.5, 0.5, 0.5, -2 + i * 0.6, 5.35, 1.3, stone));
+  const win = std({ color: '#1b2638', roughness: 0.3 });
+  for (const a of [0, 1.2, -1.2]) { const w = box(0.22, 0.6, 0.06, win, 1.6 + Math.sin(a) * 1.14, 6.4, Math.cos(a) * 1.14); w.rotation.y = a; g.add(w); }
+  for (const x of [-1.4, -0.2]) g.add(box(0.5, 0.8, 0.06, win, x, 3.8, 1.52));
   return shadowed(g);
 }
 function makeLighthouse() {
@@ -358,13 +337,12 @@ function makeCarpa(color) { // carpa de balneario a rayas
   const roof = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.8, 4), toy(color)); roof.rotation.y = Math.PI / 4; roof.position.y = 2; g.add(roof);
   return shadowed(g);
 }
-function makeHotel(color = '#d9c7a8') { // el Casino y el Hotel Provincial, de ladrillo y piedra
+function makeHotel(color = '#d9c7a8') { // el Casino y el Hotel Provincial, de ladrillo y piedra con techo de pizarra
   const g = new THREE.Group();
-  g.add(box(9, 5, 4, std({ color }), 0, 2.5, 0));
-  g.add(box(9.4, 0.4, 4.4, std({ color: '#a8492f' }), 0, 5.2, 0));
-  for (let i = 0; i < 6; i++) for (let j = 0; j < 2; j++) g.add(box(0.8, 0.9, 0.05, std({ color: '#1b2a4a' }), -3.6 + i * 1.45, 1.6 + j * 1.8, 2.03));
-  return shadowed(g);
+  g.add(hotelLadrillo(color, 9, 4, 5));
+  return g;
 }
+function makeChaletPiedra(color, roof, w, h) { const g = new THREE.Group(); g.add(chaletPiedra(color, roof, w, h)); return g; }
 function makeRocks(n, seed) {
   const g = new THREE.Group();
   const r = rng(seed);
@@ -461,7 +439,7 @@ export function decorCosta(group, anim, nodes) {
   for (let x = -36; x <= 26; x += 3.6) for (const z of [-1.6, 2.4]) {
     if ((x > -19 && x < 6) || rand() < 0.4) continue;
     const c = houses[Math.floor(rand() * houses.length)], tree = rand() < 0.3;
-    place.try(() => (tree ? makeTree(false) : makeHouse(c, ['#a8492f', '#7a4a3a', '#5e6b7a'][Math.floor(rand() * 3)], 2.6, 2.4 + rand() * 0.6)), x + (rand() - 0.5), z, 3, 2.8, Math.PI + (rand() - 0.5) * 0.3);
+    place.try(() => (tree ? makeTree(false) : makeChaletPiedra(c, ['#b5583c', '#8a4a3a', '#5e6b7a'][Math.floor(rand() * 3)], 2.6, 2.4 + rand() * 0.6)), x + (rand() - 0.5), z, 3, 2.8, Math.PI + (rand() - 0.5) * 0.3);
   }
   for (let x = -34; x <= -22; x += 3) place.try(() => makeEdificio(2.6, 4 + rand() * 3, 2.6, FACADES[Math.floor(rand() * FACADES.length)]), x, 8.6, 2.6, 2.6, Math.PI);
   for (let x = -16; x <= 22; x += 6) place.try(makeFarol, x, 15.2, 0.5, 0.5);
@@ -471,7 +449,7 @@ export function decorCosta(group, anim, nodes) {
   // Árboles y casas lejos, a los costados
   for (let i = 0; i < 40; i++) {
     const x = (rand() < 0.5 ? -1 : 1) * (42 + rand() * 14), z = -12 + rand() * 34;
-    place.try(() => (i % 3 ? makeTree(false) : makeHouse(houses[i % 5], '#a8492f', 3.2, 3.6)), x, z, 3, 3, rand() < 0.5 ? Math.PI / 2 : -Math.PI / 2);
+    place.try(() => (i % 3 ? makeTree(false) : makeChaletPiedra(houses[i % 5], '#b5583c', 3.2, 3.2)), x, z, 3, 3, rand() < 0.5 ? Math.PI / 2 : -Math.PI / 2);
   }
   for (let i = 0; i < 18; i++) place.try(() => makeTree(false), -40 + rand() * 80, 18 + rand() * 10, 2.2, 2.2);
   const flag = makeFlag(); flag.name = 'bandera'; place(flag, 26, -2.4, 0.6, 0.6); anim.flags.push(flag.userData.flag);

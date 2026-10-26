@@ -1,6 +1,7 @@
 // Más modelos: vehículos, cosas de la ciudad y objetos de los minijuegos.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { kioscoChapa, casaRosada } from './buildings.js';
 
 const mat = (color, opts = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0, flatShading: true, ...opts });
 const silver = mat('#cfd6dc', { metalness: 0.7, roughness: 0.3 });
@@ -135,27 +136,19 @@ export function makeSteak() {
   return g;
 }
 
-export function makeKiosk() {
+const CANDY = ['#e14b3c', '#f2c230', '#3b8fe0'].map((c) => mat(c, { flatShading: false, roughness: 0.4 }));
+const candyGeo = new THREE.BoxGeometry(0.2, 0.12, 0.2);
+export function makeKiosk() { // kiosco de chapa con cartel, vidriera y golosinas en el mostrador
   const g = new THREE.Group();
-  g.add(mesh(new THREE.BoxGeometry(2, 1.8, 1.6), mat('#2e9e48'), { y: 0.9 }));
-  g.add(mesh(new THREE.BoxGeometry(1.6, 0.8, 0.05), mat('#fff3c4'), { y: 1.1, z: 0.81 }));
-  g.add(mesh(new THREE.BoxGeometry(2.4, 0.15, 2.0), mat('#e14b3c'), { y: 1.9 }));
-  for (let i = 0; i < 6; i++) g.add(mesh(new THREE.BoxGeometry(0.2, 0.12, 0.2), mat(['#e14b3c', '#f2c230', '#3b8fe0'][i % 3]), { x: -0.6 + i * 0.24, y: 0.85, z: 0.8 }));
+  g.add(kioscoChapa());
+  g.add(mesh(new THREE.BoxGeometry(1.9, 0.08, 0.32), mat('#e8e2d2'), { y: 0.82, z: 0.96 }));
+  for (let i = 0; i < 6; i++) g.add(mesh(candyGeo, CANDY[i % 3], { x: -0.6 + i * 0.24, y: 0.92, z: 0.96 }));
   return g;
 }
 
-export function makeCasaRosada() {
+export function makeCasaRosada() { // revoque rosa, ventanas en arco, pilastras, balcones y el cuerpo central
   const g = new THREE.Group();
-  const pink = mat('#e7a1a6'), light = mat('#f3c9cb'), dark = mat('#b9787e');
-  g.add(mesh(new THREE.BoxGeometry(10, 4, 3), pink, { y: 2 }));
-  g.add(mesh(new THREE.BoxGeometry(10.4, 0.4, 3.4), light, { y: 4.2 }));
-  g.add(mesh(new THREE.BoxGeometry(3, 1.6, 3.2), pink, { y: 5.0 }));
-  g.add(mesh(new THREE.BoxGeometry(3.3, 0.3, 3.5), light, { y: 5.9 }));
-  for (let i = 0; i < 9; i++) {
-    g.add(mesh(new THREE.BoxGeometry(0.25, 3.2, 0.25), light, { x: -4.2 + i * 1.05, y: 1.8, z: 1.55 }));
-    if (i < 8) g.add(mesh(new THREE.BoxGeometry(0.5, 0.9, 0.05), dark, { x: -3.7 + i * 1.05, y: 2.6, z: 1.52 }));
-  }
-  g.add(mesh(new THREE.BoxGeometry(1.2, 2, 0.1), mat('#5a3a2a'), { y: 1, z: 1.55 }));
+  g.add(casaRosada());
   g.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.6, 6), silver, { y: 6.8 }));
   g.add(mesh(new THREE.BoxGeometry(0.9, 0.2, 0.02), mat('#74acdf'), { x: 0.47, y: 7.45 }));
   g.add(mesh(new THREE.BoxGeometry(0.9, 0.2, 0.02), mat('#ffffff'), { x: 0.47, y: 7.25 }));

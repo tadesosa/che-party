@@ -1,6 +1,7 @@
 // Ayudas compartidas por las escenas de minijuegos.
 import * as THREE from 'three';
 import { animateChar } from '../models.js';
+import { uvBox } from '../textures.js';
 
 // Acerca suavemente el personaje a la posición del servidor
 export function follow(g, x, z, k, y = null) {
@@ -44,6 +45,13 @@ export function plane(w, h, material, { x = 0, y = 0, z = 0 } = {}) {
 }
 
 export const std = (opts) => new THREE.MeshStandardMaterial({ roughness: 0.85, ...opts });
+
+// Caja con una textura que se repite en unidades del mundo (ladrillo, azulejos, madera): size = medida de una repetición
+export function tbox(w, h, d, material, size = 1, { x = 0, y = 0, z = 0 } = {}) {
+  const m = new THREE.Mesh(uvBox(new THREE.BoxGeometry(w, h, d), size), material);
+  m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
 
 // Cámara de carrera: encuadra del último al primero, así nadie queda afuera. Si están muy separados, se aleja.
 // lo / hi: posición del último y del primero sobre el eje de la carrera. base: distancia normal de la cámara.

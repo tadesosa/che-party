@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import { makeFarol, makeArrow } from '../props.js';
 import { tex } from '../textures.js';
-import { plane, std, rowX } from './util.js';
+import { casitaChapa } from '../buildings.js';
+import { plane, std, rowX, canvasPlane } from './util.js';
 
 const ROT = { up: 0, down: Math.PI, left: Math.PI / 2, right: -Math.PI / 2 };
 const LEAN = { up: [0, -0.35], down: [0, 0.35], left: [0.35, 0], right: [-0.35, 0] };
@@ -16,12 +17,27 @@ export default {
     const stage = new THREE.Mesh(new THREE.BoxGeometry(Math.max(10, n * 2.6 + 3), 0.5, 6), std({ map: tex.wood([3, 2]) }));
     stage.position.set(0, 0.25, 0); stage.receiveShadow = true; stage.castShadow = true; group.add(stage);
     // Telón rojo de fondo
-    const curtain = new THREE.Mesh(new THREE.BoxGeometry(Math.max(12, n * 2.6 + 5), 7, 0.3), std({ color: '#9b1c2c' }));
+    const CW = Math.max(12, n * 2.6 + 5);
+    const curtain = new THREE.Mesh(new THREE.BoxGeometry(CW, 7, 0.3), std({ color: '#9b1c2c' }));
     curtain.position.set(0, 3.5, -3.3); group.add(curtain);
-    for (let i = -6; i <= 6; i++) {
-      const fold = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 7, 6), std({ color: '#7d1523' }));
-      fold.position.set(i * 1.0, 3.5, -3.1); group.add(fold);
-    }
+    const fold = std({ color: '#8a1826', roughness: 0.7 }), foldGeo = new THREE.CylinderGeometry(0.25, 0.25, 7, 10);
+    for (let i = -6; i <= 6; i++) { const f = new THREE.Mesh(foldGeo, fold); f.position.set(i * 1.0, 3.5, -3.1); group.add(f); }
+    // Bambalina con flecos dorados y el cartel fileteado
+    group.add(new THREE.Mesh(new THREE.BoxGeometry(CW + 0.4, 0.9, 0.5), fold).translateY(7.1).translateZ(-3));
+    const gold = std({ color: '#d9a627', metalness: 0.6, roughness: 0.35 });
+    group.add(new THREE.Mesh(new THREE.BoxGeometry(CW + 0.4, 0.12, 0.55), gold).translateY(6.62).translateZ(-3));
+    const sign = canvasPlane(4, 0.95, (x, w, h) => {
+      x.fillStyle = '#141414'; x.beginPath(); x.roundRect(4, 4, w - 8, h - 8, 30); x.fill();
+      x.strokeStyle = '#d9a627'; x.lineWidth = 6; x.beginPath(); x.roundRect(14, 14, w - 28, h - 28, 22); x.stroke();
+      x.strokeStyle = '#e14b3c'; x.lineWidth = 5;
+      for (const sx of [1, -1]) { x.beginPath(); x.moveTo(w / 2 + sx * w * 0.3, h / 2); x.bezierCurveTo(w / 2 + sx * w * 0.38, h * 0.1, w / 2 + sx * w * 0.46, h * 0.9, w / 2 + sx * w * 0.42, h * 0.45); x.stroke(); }
+      x.fillStyle = '#f6d36b'; x.font = `italic bold ${h * 0.5}px Georgia, serif`; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillText('Tango', w / 2, h / 2 + 4);
+    }, 512);
+    sign.position.set(0, 6.75, -2.6); group.add(sign);
+    // Caminito detrás del escenario
+    const COL = ['#e14b3c', '#f2c230', '#2f86e0', '#2e9e48', '#ef8a17', '#b06ab3'];
+    for (let i = 0, x = -22; x <= 22; i++, x += 3.6) { const h = casitaChapa(COL[i % 6], COL[(i + 3) % 6], 3.4, 3.8 + (i % 2) * 0.8, 2.6); h.position.set(x, 0, -9); group.add(h); }
     for (const x of [-Math.max(6, n * 1.3 + 2), Math.max(6, n * 1.3 + 2)]) { const f = makeFarol(); f.position.set(x, 0.5, 1.5); group.add(f); }
     const arrow = makeArrow('#f6b40e'); arrow.scale.setScalar(2.2); arrow.position.set(0, 5.2, -2.5); arrow.visible = false; group.add(arrow);
     const q = ctx.label('?', '#ffffff', 2.4); q.position.set(0, 5, -2.5); q.visible = false; group.add(q);

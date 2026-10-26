@@ -1,11 +1,12 @@
 // Decorado de los tableros nuevos: Bariloche, Córdoba, Sur (Ushuaia) y Norte (Salta y Jujuy).
 // Usa el mismo acomodador que los otros (placer), que no deja poner nada encima de los caminos.
 import * as THREE from 'three';
-import { makeTree, makeHouse, makeFlag } from './models.js';
+import { makeTree, makeFlag } from './models.js';
 import { makeFountain, makeFarol, makeBench } from './props.js';
-import { tex } from './textures.js';
+import { tex, uvBox } from './textures.js';
 import { makeTerrain } from './terrain.js';
-import { placer, rng, makeEdificio } from './decor.js';
+import { placer, rng, makeEdificio, makeAdobe } from './decor.js';
+import { Builder, addBuilding, addRoof, chaletMontana } from './buildings.js';
 
 const std = (opts) => new THREE.MeshStandardMaterial({ roughness: 0.8, ...opts });
 const toy = (color, opts = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.4, clearcoat: 0.5, clearcoatRoughness: 0.3, ...opts });
@@ -18,14 +19,6 @@ function ground(group, w, d, material, x = 0, z = 0, y = 0.01) {
 function ellipse(group, rx, rz, material, x, z, y = 0.02) {
   const m = new THREE.Mesh(new THREE.CircleGeometry(1, 48), material);
   m.rotation.x = -Math.PI / 2; m.scale.set(rx, rz, 1); m.position.set(x, y, z); m.receiveShadow = true; group.add(m); return m;
-}
-// Techo a dos aguas: un triángulo (ancho w, alto rise) estirado a lo largo de d. Queda apoyado en y = 0.
-function gableRoof(w, d, rise, material, over = 0.25) {
-  const s = new THREE.Shape();
-  s.moveTo(-w / 2 - over, 0); s.lineTo(w / 2 + over, 0); s.lineTo(0, rise); s.lineTo(-w / 2 - over, 0);
-  const geo = new THREE.ExtrudeGeometry(s, { depth: d + over * 2, bevelEnabled: false });
-  geo.translate(0, 0, -(d + over * 2) / 2);
-  return new THREE.Mesh(geo, material);
 }
 const water = (rep, color = '#3d86b8') => toy(color, { map: tex.water(rep), roughness: 0.1, clearcoat: 1, metalness: 0.1 });
 
@@ -51,14 +44,11 @@ function makeSnowPine(h = 3.4) {
   return g;
 }
 // Chalet de madera y piedra (Bariloche, Ushuaia)
-function makeChalet(wall = '#8a5a3a', roof = '#2f4f3a', w = 3, h = 2.4) {
+// style: 'troncos' (Bariloche), 'chapa' (las casitas de colores de Ushuaia) o 'madera'
+function makeChalet(wall = '#8a5a3a', roof = '#2f4f3a', w = 3, h = 2.4, style = 'troncos', ground) {
   const g = new THREE.Group();
-  g.add(box(w, 0.8, w * 0.8, std({ color: '#9a9488', flatShading: true }), 0, 0.4, 0));
-  g.add(box(w, h - 0.8, w * 0.8, std({ color: wall }), 0, 0.8 + (h - 0.8) / 2, 0));
-  const r = gableRoof(w, w * 0.8, w * 0.42, toy(roof)); r.position.y = h; g.add(r);
-  g.add(box(0.5, 0.9, 0.05, std({ color: '#3b2414' }), 0, 1.25, w * 0.4 + 0.01));
-  for (const x of [-w * 0.3, w * 0.3]) g.add(box(0.45, 0.45, 0.05, std({ color: '#ffe9a8', emissive: '#3a2a00' }), x, 1.6, w * 0.4 + 0.01));
-  return shadowed(g);
+  g.add(chaletMontana(wall, roof, w, h, { style, ground }));
+  return g;
 }
 function makeBoatSimple(color = '#ffffff', len = 3) {
   const g = new THREE.Group();
@@ -103,13 +93,23 @@ function scatter(place, rand, n, make, area, size = 1.8, skip = null) {
 const inEllipse = (x, z, cx, cz, rx, rz) => ((x - cx) / rx) ** 2 + ((z - cz) / rz) ** 2 < 1;
 
 // ---------- Bariloche ----------
+const clockMat = std({ color: '#f4f1e8' }), handMat = std({ color: '#1b1b1b' });
 function makeCivicTower() { // la torre del reloj del Centro Cívico, de piedra y madera
   const g = new THREE.Group();
-  const stone = std({ color: '#8f8a80', flatShading: true }), wood = std({ color: '#6b4a2b' });
-  g.add(box(2.2, 6, 2.2, stone, 0, 3, 0));
-  g.add(box(2.5, 1.2, 2.5, wood, 0, 6.6, 0));
-  for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.CircleGeometry(0.45, 18), std({ color: '#f4f1e8' })); f.position.set(Math.sin(i * Math.PI / 2) * 1.27, 6.6, Math.cos(i * Math.PI / 2) * 1.27); f.rotation.y = i * Math.PI / 2; g.add(f); }
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(1.9, 2.4, 4), toy('#2f4f3a')); roof.rotation.y = Math.PI / 4; roof.position.y = 8.4; g.add(roof);
+  const B = new Builder(), white = [1, 1, 1];
+  B.box(0, 3, 0, 2.2, 6, 2.2, { side: 'piedra', top: 'piedra' }, B.color('#e6e0d6'), 1.1);
+  B.box(0, 6.6, 0, 2.5, 1.2, 2.5, { side: 'troncos', top: 'madera' }, B.color('#8a5a3a'), 0.9);
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 2, n = new THREE.Vector3(Math.sin(a), 0, Math.cos(a)), along = new THREE.Vector3(Math.cos(a), 0, -Math.sin(a));
+    for (const y of [1.6, 3.6]) B.rect(n.clone().multiplyScalar(1.12).addScaledVector(along, -0.25).setY(y), along.clone().multiplyScalar(0.5), new THREE.Vector3(0, 1, 0), 'ventanaLuz', white);
+  }
+  addRoof(B, 'hip', 0, 7.2, 0, 2.5, 2.5, 2.4, 0.3, 'chapa', B.color('#3f6b4a'));
+  g.add(B.mesh());
+  const fGeo = new THREE.CircleGeometry(0.45, 18);
+  for (let i = 0; i < 4; i++) {
+    const f = new THREE.Mesh(fGeo, clockMat); f.position.set(Math.sin(i * Math.PI / 2) * 1.27, 6.6, Math.cos(i * Math.PI / 2) * 1.27); f.rotation.y = i * Math.PI / 2; g.add(f);
+    const hnd = box(0.05, 0.32, 0.02, handMat, 0, 0.1, 0.01); f.add(hnd);
+  }
   return shadowed(g);
 }
 function makeStBernard() {
@@ -122,10 +122,9 @@ function makeStBernard() {
   for (const [x, z] of [[-0.35, 0.18], [-0.35, -0.18], [0.35, 0.18], [0.35, -0.18]]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 6), white); l.position.set(x, 0.25, z); g.add(l); }
   return shadowed(g);
 }
-function makeChocoShop(color) {
-  const g = makeChalet('#7a4a2b', '#5a2a18', 2.8, 2.6);
-  const awn = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.08, 0.8), toy(color)); awn.position.set(0, 1.85, 1.5); awn.rotation.x = 0.3; g.add(awn);
-  const bar = box(0.6, 0.15, 0.25, toy('#4a2512'), 0, 2.15, 1.15); g.add(bar);
+function makeChocoShop(color) { // chocolatería de troncos con vidriera y toldo
+  const g = makeChalet('#8a5a3a', '#5a2a18', 2.8, 2.6, 'troncos', 'chocolates');
+  const awn = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.06, 0.6), toy(color)); awn.position.set(0, 2.38, 1.42); awn.rotation.x = 0.35; g.add(awn);
   return shadowed(g);
 }
 function makeSnowman() {
@@ -136,14 +135,13 @@ function makeSnowman() {
   const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.3, 10), std({ color: '#1b1b1b' })); hat.position.y = 1.9; g.add(hat);
   return shadowed(g);
 }
-function makeLlaoLlao() { // el hotel, gran chalet de madera con techo verde
+function makeLlaoLlao() { // el hotel: gran chalet de madera sobre piedra, con techo verde y su torre
   const g = new THREE.Group();
-  const wood = std({ color: '#d9c7a8' }), roof = toy('#3f6b4a');
-  g.add(box(10, 3.2, 4, wood, 0, 1.6, 0));
-  const r = gableRoof(4, 10, 2, roof); r.rotation.y = Math.PI / 2; r.position.y = 3.2; g.add(r);
-  const tw = box(2.4, 6, 2.4, wood, 3.5, 3, 0.6); g.add(tw);
-  const tr = new THREE.Mesh(new THREE.ConeGeometry(2, 2.6, 4), roof); tr.rotation.y = Math.PI / 4; tr.position.set(3.5, 7.3, 0.6); g.add(tr);
-  for (let i = 0; i < 7; i++) g.add(box(0.6, 0.7, 0.05, std({ color: '#1b2a4a' }), -4 + i * 1.2, 1.8, 2.02));
+  const B = new Builder();
+  const o = { wall: 'madera', tint: '#e6d6b8', groundCell: 'piedra', groundTint: '#ffffff', win: 'ventanaLuz', trim: '#5a3a22', roofCell: 'chapa', roofTint: '#3f6b4a', winW: 0.55 };
+  addBuilding(B, { ...o, w: 10, d: 4, h: 3.2, floorH: 1.6, bay: 1.25, ground: 'puertaRustica', groundBack: true, roof: 'gable', rise: 2, over: 0.35, cornice: false });
+  addBuilding(B, { ...o, w: 2.4, d: 2.4, h: 6, x: 3.5, z: 0.6, floorH: 1.5, bay: 1.2, roof: 'hip', rise: 2.6, over: 0.25, cornice: true });
+  g.add(B.mesh());
   return shadowed(g);
 }
 
@@ -226,35 +224,37 @@ function makeSierra(r, h, color = '#6f9a4a') { // cerro redondeado y verde
 }
 function makeCucu() { // el reloj cucú de Carlos Paz
   const g = new THREE.Group();
-  const wood = toy('#7a4a2b'), roof = toy('#5a2a18');
-  g.add(box(3, 4, 2, wood, 0, 2, 0));
-  const r = gableRoof(3, 2, 1.4, roof); r.position.y = 4; g.add(r);
+  const B = new Builder();
+  addBuilding(B, { w: 3, d: 2, h: 4, wall: 'madera', tint: '#9a6236', floorH: 4, sides: 'none', base: false, belt: false, cornice: false, roof: 'gableZ', roofCell: 'tejuela', roofTint: '#6b3420', rise: 1.4, over: 0.3 });
+  g.add(B.mesh());
   const face = new THREE.Mesh(new THREE.CircleGeometry(0.9, 24), std({ color: '#fff6dc' })); face.position.set(0, 2.6, 1.02); g.add(face);
   const hand1 = box(0.08, 0.7, 0.03, std({ color: '#1b1b1b' }), 0, 2.9, 1.04); g.add(hand1);
   const bird = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), toy('#f2c230')); bird.position.set(0, 4.1, 1.15); g.add(bird);
   g.add(box(0.6, 0.6, 0.05, std({ color: '#2a1608' }), 0, 4.1, 1.02));
   return shadowed(g);
 }
-function makeCabildo() { // arcadas blancas
+// Cabildo colonial: arcada abajo, balcones arriba y la torre en el medio
+function makeCabildo({ w = 10, d = 3, h = 3.2, tint = '#f4efe2', roof = 'flat' } = {}) {
   const g = new THREE.Group();
-  const white = std({ color: '#f1ead8' });
-  g.add(box(10, 3.2, 3, white, 0, 1.6, 0));
-  g.add(box(10.4, 0.3, 3.4, std({ color: '#c9a07a' }), 0, 3.3, 0));
-  for (let i = 0; i < 7; i++) { const a = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.1, 16, 1, false, 0, Math.PI), std({ color: '#5a4a3a' })); a.rotation.x = Math.PI / 2; a.rotation.z = Math.PI; a.position.set(-4.2 + i * 1.4, 1.5, 1.52); g.add(a); g.add(box(1.1, 1.5, 0.05, std({ color: '#5a4a3a' }), -4.2 + i * 1.4, 0.75, 1.52)); }
-  const tw = box(1.6, 2, 1.6, white, 0, 4.4, 0); g.add(tw);
+  const B = new Builder();
+  addBuilding(B, { w, d, h, wall: 'revoque', tint, floorH: h / 2, bay: 1.4, ground: ['arco'], groundBack: true, win: 'ventanaBalcon', balcony: 0.85, trim: '#c9a07a', roof, roofCell: 'tejas', roofTint: '#b5583c', rise: 1.1, over: 0.3, winW: 0.42 });
+  addBuilding(B, { w: 1.6, d: 1.6, h: 2, y: h + (roof === 'flat' ? 0.27 : 0), wall: 'revoque', tint, floorH: 2, bay: 1.6, win: 'arco', trim: '#c9a07a', base: false, belt: false, sill: false, roof: 'hip', roofCell: 'tejas', roofTint: '#b5583c', rise: 0.9, winW: 0.6, winH: 0.7 });
+  g.add(B.mesh());
   return shadowed(g);
 }
+const DOME = toy('#e8e2d2'), CROSS = std({ color: '#3a3a3a' });
 function makeChurch(color = '#f1ead8', domes = true) { // iglesia colonial / jesuítica
   const g = new THREE.Group();
-  const wall = std({ color });
-  g.add(box(4, 3.4, 7, wall, 0, 1.7, 0));
-  const r = gableRoof(4, 7, 1.6, toy('#b5523b')); r.position.y = 3.4; g.add(r);
+  const B = new Builder();
+  const o = { wall: 'revoque', tint: color, trim: '#e9dfc8', jitter: 0.06 };
+  addBuilding(B, { ...o, w: 4, d: 7, h: 3.4, floorH: 3.4, bay: 4 / 3, win: 'ventanaArco', ground: ['ventanaArco', 'puertaIglesia', 'ventanaArco'], doorW: 1.1, winW: 0.38, winH: 0.5, roof: 'gableZ', roofCell: 'tejas', roofTint: '#b5583c', rise: 1.6, over: 0.25, sill: false });
   for (const sx of [-1, 1]) {
-    g.add(box(1.3, 5.6, 1.3, wall, sx * 1.6, 2.8, 3.2));
-    if (domes) { const d = new THREE.Mesh(new THREE.SphereGeometry(0.7, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), toy('#e8e2d2')); d.position.set(sx * 1.6, 5.6, 3.2); g.add(d); }
+    addBuilding(B, { ...o, w: 1.3, d: 1.3, h: 4.2, x: sx * 1.6, z: 3.2, floorH: 1.4, bay: 1.3, win: 'ventanaArco', winW: 0.32, winH: 0.5, roof: 'none', cornice: true, sill: false });
+    addBuilding(B, { ...o, w: 1.3, d: 1.3, h: 1.4, x: sx * 1.6, z: 3.2, y: 4.32, floorH: 1.4, bay: 1.3, win: 'arco', winW: 0.7, winH: 0.8, base: false, belt: false, sill: false, roof: domes ? 'none' : 'hip', roofCell: 'tejas', roofTint: '#b5583c', rise: 0.9, cornice: true });
+    if (domes) { const d = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), DOME); d.position.set(sx * 1.6, 5.84, 3.2); g.add(d); }
   }
-  g.add(box(1, 1.8, 0.05, std({ color: '#5a3a22' }), 0, 0.9, 3.52));
-  const cross = box(0.1, 0.7, 0.1, std({ color: '#3a3a3a' }), 0, 4.7, 3.4); g.add(cross);
+  g.add(B.mesh());
+  g.add(box(0.1, 0.7, 0.1, CROSS, 0, 5.4, 3.55), box(0.42, 0.1, 0.1, CROSS, 0, 5.5, 3.55));
   return shadowed(g);
 }
 function makeUfo() {
@@ -300,7 +300,7 @@ export function decorCordoba(group, anim, nodes) {
   const cucu = makeCucu(); cucu.name = 'reloj cucú'; place(cucu, 37.5, -2, 3.2, 2.4, -Math.PI / 2);
 
   // El centro: Cabildo, Catedral y la plaza
-  const cab = makeCabildo(); cab.scale.setScalar(0.85); cab.name = 'Cabildo'; place(cab, -1, 19, 9, 3, Math.PI);
+  const cab = makeCabildo({ w: 10, d: 3, h: 3.2 }); cab.scale.setScalar(0.85); cab.name = 'Cabildo'; place(cab, -1, 19, 9, 3, Math.PI);
   const cat = makeChurch('#efe2c4'); cat.scale.setScalar(0.85); cat.name = 'Catedral'; place(cat, 11.5, 19.5, 4, 6.5, Math.PI);
   ellipse(group, 5, 2.6, std({ map: tex.baldosa([4, 2]) }), 0, 9.6, 0.03);
   const fuente = makeFountain(); fuente.scale.setScalar(0.6); fuente.name = 'fuente'; place(fuente, 0, 9.6, 1.8, 1.8); anim.fountains.push(fuente);
@@ -399,7 +399,7 @@ export function decorSur(group, anim, nodes) {
   for (let x = -16; x <= 20; x += 3.6) for (const z of [-15, -10.5, -6, -1.5, 3, 7.5]) {
     if (rand() < 0.5) continue;
     const c = colors[Math.floor(rand() * colors.length)];
-    place.try(() => makeChalet(c, ['#5e6b7a', '#7a3a2a', '#2f4f3a'][Math.floor(rand() * 3)], 2.6, 2.2), x + (rand() - 0.5), z + (rand() - 0.5), 2.8, 2.4, rand() < 0.5 ? 0 : Math.PI);
+    place.try(() => makeChalet(c, ['#5e6b7a', '#7a3a2a', '#2f4f3a'][Math.floor(rand() * 3)], 2.6, 2.2, 'chapa'), x + (rand() - 0.5), z + (rand() - 0.5), 2.8, 2.4, rand() < 0.5 ? 0 : Math.PI);
   }
   const fin = sign('USHUAIA · FIN DEL MUNDO', { w: 8, h: 1.3, bg: '#1b2a4a' }); fin.name = 'cartel fin del mundo'; place(fin, -2, 9.4, 8, 0.5);
   const train = makeTrain(); train.name = 'tren'; place(train, 22.2, -11, 1.4, 8, Math.PI / 2);
@@ -480,24 +480,22 @@ export function decorNorte(group, anim, nodes, terrain) {
   for (const [x, z, r, h] of [[34, 10, 6, 7], [36, -2, 7, 9], [-44, 10, 7, 8]]) { const m = makePeak(r, h, { color: '#b5704a', snow: 0 }); m.position.set(x, place.h(x, z), z); group.add(m); }
 
   // Salta: el Cabildo y la iglesia de San Francisco (roja y dorada)
-  const cab = new THREE.Group();
-  cab.add(box(11, 3.4, 3, std({ color: '#f4efe2' }), 0, 1.7, 0));
-  for (let i = 0; i < 9; i++) cab.add(box(0.8, 2, 0.05, std({ color: '#3b2414' }), -4.4 + i * 1.1, 1, 1.52));
-  cab.add(box(2, 2.4, 2, std({ color: '#f4efe2' }), 0, 4.6, 0));
-  shadowed(cab); cab.name = 'Cabildo de Salta'; place(cab, -1, 20, 10, 3, Math.PI);
+  const cab = makeCabildo({ w: 11, d: 3, h: 3.4, tint: '#f6f1e4', roof: 'gable' });
+  cab.name = 'Cabildo de Salta'; place(cab, -1, 20, 10, 3, Math.PI);
   const sanFran = makeChurch('#b5303a'); sanFran.scale.setScalar(0.85); sanFran.name = 'San Francisco'; place(sanFran, 12.5, 20.5, 4, 6.5, Math.PI);
   ellipse(group, 5, 2.4, std({ map: tex.baldosa([4, 2]), color: '#e8d8c0' }), 0, 10.6, 0.03);
   const flag = makeFlag(); flag.name = 'bandera'; place(flag, 3.5, 10.6, 0.6, 0.6); anim.flags.push(flag.userData.flag);
   // Purmamarca: iglesia de adobe y casitas
   const capilla = makeChurch('#e9dcc2', false); capilla.scale.setScalar(0.7); capilla.name = 'capilla de Purmamarca'; place(capilla, -9, 4, 3, 5);
-  for (const [x, z] of [[-9, -1.5], [-5.5, 6], [-6, 1.5], [-24, 2]]) place.try(() => makeChalet('#d6a77a', '#8a6a4a', 2.6, 2), x, z, 2.8, 2.4, rand() < 0.5 ? 0 : Math.PI);
+  for (const [x, z] of [[-9, -1.5], [-5.5, 6], [-6, 1.5], [-24, 2]]) place.try(() => makeAdobe(['#d6a77a', '#e0b48a', '#c99a70'][Math.floor(rand() * 3)]), x, z, 2.8, 2.4, rand() < 0.5 ? 0 : Math.PI);
   // Tren a las Nubes en su estación, junto al viaducto
   const tren = new THREE.Group();
   for (let i = 0; i < 4; i++) { tren.add(box(2.2, 1.3, 1.1, toy(i ? '#e8e2d2' : '#c0392b'), -i * 2.4, 1, 0)); tren.add(box(2.25, 0.25, 1.15, toy('#c0392b'), -i * 2.4, 1.75, 0)); }
   shadowed(tren); tren.name = 'Tren a las Nubes'; place(tren, 6, -11, 9.6, 1.4);
   // Monumento a la Independencia de Humahuaca (escalinata y estatua)
   const mon = new THREE.Group();
-  for (let i = 0; i < 5; i++) mon.add(box(6 - i * 0.9, 0.5, 4 - i * 0.6, std({ color: '#c9b49a' }), 0, 0.25 + i * 0.5, 0));
+  const monStone = std({ map: tex.piedra(), color: '#e8dccb', roughness: 0.9 });
+  for (let i = 0; i < 5; i++) mon.add(new THREE.Mesh(uvBox(new THREE.BoxGeometry(6 - i * 0.9, 0.5, 4 - i * 0.6), 1.2), monStone).translateY(0.25 + i * 0.5));
   const st = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 2.6, 8), toy('#6f7f63', { metalness: 0.6 })); st.position.y = 3.8; mon.add(st);
   shadowed(mon); mon.name = 'Monumento a la Independencia'; place(mon, -41, -2, 6, 4, Math.PI / 2);
   // Apachetas, cardones y llamas
@@ -507,4 +505,4 @@ export function decorNorte(group, anim, nodes, terrain) {
 }
 
 // Modelos que también usan los minijuegos de estos tableros
-export { makePine, makeSnowPine, makePenguin, makeChalet, makeLlama, makeCardon, makeSierra, makeUfo, makePeak, makeSevenColors, makeApacheta, makeTrain, makeStBernard };
+export { makeCabildo, makePine, makeSnowPine, makePenguin, makeChalet, makeLlama, makeCardon, makeSierra, makeUfo, makePeak, makeSevenColors, makeApacheta, makeTrain, makeStBernard };
