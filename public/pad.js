@@ -3,8 +3,12 @@
 //   slider · deslizador: el dedo marca la posición exacta de tu paleta
 //   crank  · manivela: girás el dedo en círculos (cuenta la velocidad y el sentido)
 //   draw   · pizarrón: dibujás con el dedo, o elegís la respuesta si dibuja otro
+//   fingers· twister: un dedo apoyado en cada círculo, varios a la vez
+//   oars   · remos: cada pulgar rema de su lado deslizando para abajo
+//   bid    · oferta: elegís un número deslizando y confirmás
+//   swipe  · patada: deslizás para adelante; la curva del dedo es la comba
 // Usa $, send, buzz, S, myId y practicing de play.js. El minijuego manda su estado con el cue { pad: {...} }.
-const PAD_CONTROLS = ['sling', 'slider', 'crank', 'draw'];
+const PAD_CONTROLS = ['sling', 'slider', 'crank', 'draw', 'fingers', 'oars', 'bid', 'swipe'];
 const pad = { ctl: null, cfg: {}, cfgSig: '', down: null, cvs: null, g: null, w: 0, h: 0, dpr: 1 };
 
 function padColor() { return getComputedStyle(document.body).getPropertyValue('--me').trim() || '#6c7cff'; }
@@ -28,6 +32,8 @@ window.padCue = function padCue(cfg) {
   const prev = pad.cfg;
   pad.cfg = cfg || {}; pad.cfgSig = sig;
   if (pad.ctl === 'draw' && (prev.round !== pad.cfg.round || prev.mode !== pad.cfg.mode)) { draw.strokes = []; draw.cur = null; draw.guessed = null; }
+  if (pad.ctl === 'bid' && prev.round !== pad.cfg.round) { bid.sent = false; bid.v = Math.min(bid.v, pad.cfg.max || 0); }
+  if (pad.ctl === 'swipe' && prev.round !== pad.cfg.round) swipe.sent = false;
   padRenderUi();
 };
 window.padResetAll = function padResetAll() { pad.ctl = null; pad.key = null; pad.cfg = {}; pad.cfgSig = ''; };
@@ -37,6 +43,10 @@ function padReset() {
   slider.pos = 0;
   crank.vel = 0; crank.acc = 0; crank.ang = -Math.PI / 2; crank.last = null; crank.head = null; crank.trail = [];
   draw.strokes = []; draw.cur = null; draw.guessed = null; draw.sent = 0;
+  fingers.ptrs.clear(); fingers.sent = '';
+  oars.ptrs.clear(); oars.flash = [0, 0];
+  bid.v = 0; bid.sent = false;
+  swipe.path = null; swipe.sent = false; swipe.last = null;
 }
 
 function padResize() {
@@ -54,6 +64,8 @@ function padActive() {
   if (practicing) return true;
   if (pad.ctl === 'sling') return !!pad.cfg.on;
   if (pad.ctl === 'draw') return pad.cfg.mode === 'draw';
+  if (pad.ctl === 'bid') return pad.cfg.mode === 'bid' && !bid.sent;
+  if (pad.ctl === 'swipe') return !!pad.cfg.on && !swipe.sent;
   return pad.cfg.on !== false;
 }
 
@@ -64,13 +76,22 @@ function padRenderUi() {
     slider: c.hint || (c.axis === 'v' ? '👆 Deslizá arriba y abajo' : '👉 Deslizá a los costados'),
     crank: c.hint || '🔄 Girá el dedo en círculos',
     draw: practicing ? '✏️ Práctica: dibujá algo' : c.mode === 'draw' ? `✏️ Dibujá: <b>${esc(c.word || '')}</b>` : c.mode === 'guess' ? (c.hint || '🤔 ¿Qué está dibujando?') : (c.hint || '📺 Mirá la tele'),
+    fingers: c.hint || '☝️ Un dedo en cada círculo… ¡y no los levantes!',
+    oars: c.hint || '🚣 Deslizá para abajo con cada pulgar',
+    bid: practicing ? '💰 Práctica: deslizá para elegir cuánto' : c.mode === 'bid' ? (bid.sent ? `✅ Ofreciste $${bid.v}. Esperá…` : (c.hint || '💰 ¿Cuánto ofrecés?')) : (c.hint || '📺 Mirá la tele'),
+    swipe: practicing ? '⚽ Práctica: deslizá para arriba' : swipe.sent ? '⚽ ¡Pateaste! Mirá la tele' : c.on ? (c.hint || '⚽ Deslizá para arriba: la curva es la comba') : (c.hint || '⏳ Esperá…'),
   };
   $('padHint').innerHTML = hints[pad.ctl] || '';
   $('sPad').classList.toggle('pad-off', !padActive());
   // Pizarrón: botones de respuesta para los que adivinan, "borrar" para el que dibuja
   const guessing = pad.ctl === 'draw' && !practicing && c.mode === 'guess';
   $('padOpts').classList.toggle('hidden', !guessing);
-  $('padTools').classList.toggle('hidden', !(pad.ctl === 'draw' && (practicing || c.mode === 'draw')));
+  const tools = (pad.ctl === 'draw' && (practicing || c.mode === 'draw')) || (pad.ctl === 'bid' && (practicing || c.mode === 'bid'));
+  $('padTools').classList.toggle('hidden', !tools);
+  $('padClear').classList.toggle('hidden', pad.ctl !== 'draw');
+  $('padOk').classList.toggle('hidden', pad.ctl !== 'bid');
+  $('padOk').disabled = pad.ctl === 'bid' && (bid.sent || practicing);
+  if (pad.ctl === 'bid') $('padOk').textContent = bid.sent ? `✅ $${bid.v}` : `🔨 OFRECER $${bid.v}`;
   $('padWrap').classList.toggle('hidden', guessing);
   if (guessing) {
     const opts = c.opts || [];
@@ -95,6 +116,7 @@ function padRenderUi() {
 function padPoint(e) { const r = pad.cvs.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
 const padEl = $('padCanvas');
 padEl.addEventListener('pointerdown', (e) => {
+  if (MULTI[pad.ctl]) { e.preventDefault(); if (padActive()) { try { padEl.setPointerCapture(e.pointerId); } catch { /* sin captura */ } MULTI[pad.ctl].down(e.pointerId, padPoint(e)); } return; }
   if (pad.down || !padActive()) return;
   e.preventDefault();
   try { padEl.setPointerCapture(e.pointerId); } catch { /* sin captura */ }
@@ -104,12 +126,14 @@ padEl.addEventListener('pointerdown', (e) => {
   HANDLERS[pad.ctl] && HANDLERS[pad.ctl].down(p);
 });
 padEl.addEventListener('pointermove', (e) => {
+  if (MULTI[pad.ctl]) { MULTI[pad.ctl].move(e.pointerId, padPoint(e)); return; }
   if (!pad.down || e.pointerId !== pad.down.id) return;
   const p = padPoint(e);
   pad.down.x = p.x; pad.down.y = p.y;
   HANDLERS[pad.ctl] && HANDLERS[pad.ctl].move(p);
 });
 function padUp(e) {
+  if (MULTI[pad.ctl]) { MULTI[pad.ctl].up(e.pointerId, padPoint(e)); return; }
   if (!pad.down || e.pointerId !== pad.down.id) return;
   // Vale el último punto por el que pasó el dedo (algunos navegadores mandan el "soltar" en otro lugar)
   const p = { x: pad.down.x, y: pad.down.y };
@@ -228,7 +252,109 @@ const HANDLERS = {
     },
     up() { drawFlush(); draw.cur = null; },
   },
+  bid: {
+    down(p) { bidRead(p); }, move(p) { bidRead(p); }, up() { padRenderUi(); },
+  },
+  swipe: {
+    down(p) { swipe.path = [{ ...p, t: performance.now() }]; },
+    move(p) { if (swipe.path) swipe.path.push({ ...p, t: performance.now() }); },
+    up(p, cancel) { if (!cancel) swipeKick(); swipe.path = null; },
+  },
 };
+
+// --- Twister: los círculos vienen del minijuego (x, y de 0 a 1). Un círculo cuenta si hay un dedo adentro. ---
+const fingers = { ptrs: new Map(), sent: '', lastSent: 0 };
+function fingerR() { return Math.max(30, Math.min(pad.w, pad.h) * 0.095); }
+function fingerDots() {
+  if (practicing && !(pad.cfg.dots || []).length) return [{ k: 'a', x: 0.3, y: 0.35, c: '#e5243b' }, { k: 'b', x: 0.7, y: 0.6, c: '#3d8bff' }];
+  return pad.cfg.dots || [];
+}
+function fingerHeld() {
+  const R = fingerR(), held = [];
+  for (const d of fingerDots()) {
+    const x = d.x * pad.w, y = d.y * pad.h;
+    for (const p of fingers.ptrs.values()) if (Math.hypot(p.x - x, p.y - y) < R * 1.25) { held.push(d.k); break; }
+  }
+  return held;
+}
+function fingerSend(force) {
+  const held = fingerHeld(), sig = held.join(',');
+  const now = performance.now();
+  if (!force && sig === fingers.sent && now - fingers.lastSent < 300) return;
+  if (held.length > fingers.sent.split(',').filter(Boolean).length) buzz(15);
+  fingers.sent = sig; fingers.lastSent = now;
+  if (!practicing) send({ t: 'input', held });
+}
+setInterval(() => { if (pad.ctl === 'fingers' && lastScreen === 'sPad') fingerSend(false); }, 100);
+// --- Remos: cada mitad de la pantalla es un remo. Una remada = bajar el dedo (más fuerte cuanto más baja). ---
+const oars = { ptrs: new Map(), flash: [0, 0] };
+function oarFire(o) {
+  const len = o.bottom - o.top;
+  if (len < pad.h * 0.12) return;
+  const p = Math.min(1, len / (pad.h * 0.45));
+  oars.flash[o.side > 0 ? 1 : 0] = performance.now();
+  buzz(12);
+  if (!practicing) send({ t: 'action', b: 'oar', s: o.side, p: +p.toFixed(2) });
+}
+const MULTI = {
+  fingers: {
+    down(id, p) { fingers.ptrs.set(id, p); fingerSend(true); },
+    move(id, p) { if (fingers.ptrs.has(id)) { fingers.ptrs.set(id, p); fingerSend(false); } },
+    up(id) { fingers.ptrs.delete(id); fingerSend(true); },
+  },
+  oars: {
+    down(id, p) { oars.ptrs.set(id, { side: p.x < pad.w / 2 ? -1 : 1, top: p.y, bottom: p.y, x: p.x, y: p.y }); },
+    move(id, p) {
+      const o = oars.ptrs.get(id); if (!o) return;
+      o.x = p.x; o.y = p.y;
+      if (p.y < o.top && o.bottom - o.top < pad.h * 0.05) { o.top = o.bottom = p.y; return; } // todavía subiendo
+      if (p.y > o.bottom) o.bottom = p.y;
+      // Si vuelve a subir después de bajar, terminó la remada
+      if (p.y < o.bottom - pad.h * 0.06) { oarFire(o); o.top = o.bottom = p.y; }
+    },
+    up(id) { const o = oars.ptrs.get(id); if (o) oarFire(o); oars.ptrs.delete(id); },
+  },
+};
+// --- Oferta ---
+const bid = { v: 0, sent: false };
+function bidRead(p) {
+  const m = 30, max = practicing ? 100 : (pad.cfg.max || 0);
+  const k = Math.max(0, Math.min(1, (p.x - m) / Math.max(1, pad.w - m * 2)));
+  const v = Math.round(k * max);
+  if (v !== bid.v) { bid.v = v; if (v % 5 === 0) buzz(5); padRenderUi(); }
+}
+$('padOk').addEventListener('click', () => {
+  if (pad.ctl !== 'bid' || bid.sent || practicing || pad.cfg.mode !== 'bid') return;
+  bid.sent = true; buzz(40);
+  send({ t: 'action', b: 'bid', v: bid.v, r: pad.cfg.round });
+  padRenderUi();
+});
+// --- Patada con comba ---
+// Dirección = del principio al final del dedo; fuerza = qué tan rápido termina; comba = cuánto se curva el dedo en el medio.
+const swipe = { path: null, sent: false, last: null };
+function swipeKick() {
+  const P = swipe.path;
+  if (!P || P.length < 3) return;
+  const a = P[0], b = P[P.length - 1];
+  const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+  if (dy > -pad.h * 0.12) return; // tiene que ir para arriba
+  // Rapidez de la parte final del gesto (los últimos 120 ms)
+  let k = P.length - 1;
+  while (k > 0 && b.t - P[k].t < 120) k--;
+  const sp = Math.hypot(b.x - P[k].x, b.y - P[k].y) / Math.max(16, b.t - P[k].t); // px por ms
+  const pow = Math.max(0, Math.min(1, (sp - 0.3) / 4.5)); // un deslizón normal (~2 px/ms) queda en la mitad
+  // Comba: la mayor separación del dedo respecto de la recta, con signo (+ = panza a la derecha)
+  let dev = 0;
+  for (const q of P) { const d = ((q.x - a.x) * dy - (q.y - a.y) * dx) / len; if (Math.abs(d) > Math.abs(dev)) dev = d; }
+  const curve = Math.max(-1, Math.min(1, -dev / (len * 0.28)));
+  const aim = Math.max(-1, Math.min(1, Math.atan2(dx, -dy) / 0.6));
+  swipe.last = { P: P.slice(), t: performance.now(), aim, pow, curve };
+  buzz(40);
+  if (practicing) return;
+  swipe.sent = true;
+  send({ t: 'action', b: 'kick', a: +aim.toFixed(3), p: +pow.toFixed(3), c: +curve.toFixed(3), r: pad.cfg.round });
+  padRenderUi();
+}
 $('padClear').addEventListener('click', () => {
   draw.strokes = []; draw.cur = null; buzz(20);
   if (!practicing) send({ t: 'action', b: 'clear' });
@@ -323,6 +449,60 @@ function padFrame(now) {
       }
       if (s.pts.length === 2) g.lineTo(b.x + s.pts[0] / 1000 * b.w + 0.1, b.y + s.pts[1] / 1000 * b.h);
       g.stroke();
+    }
+  } else if (pad.ctl === 'fingers') {
+    const R = fingerR();
+    const held = new Set(fingerHeld());
+    for (const d of fingerDots()) {
+      const x = d.x * W, y = d.y * H, isOn = held.has(d.k);
+      const pulse = d.isNew ? 1 + Math.sin(now / 90) * 0.12 : 1;
+      g.fillStyle = d.c; g.globalAlpha = isOn ? 1 : 0.55;
+      g.beginPath(); g.arc(x, y, R * pulse, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = 1;
+      if (isOn) { g.lineWidth = 6; g.strokeStyle = '#fff'; g.beginPath(); g.arc(x, y, R + 6, 0, Math.PI * 2); g.stroke(); }
+      else if (d.isNew) { g.font = '900 26px system-ui'; g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('☝️', x, y); }
+    }
+    for (const p of fingers.ptrs.values()) { g.fillStyle = 'rgba(255,255,255,.25)'; g.beginPath(); g.arc(p.x, p.y, 22, 0, Math.PI * 2); g.fill(); }
+  } else if (pad.ctl === 'oars') {
+    g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(W / 2 - 1, 0, 2, H);
+    for (const side of [-1, 1]) {
+      const cx = side < 0 ? W / 4 : W * 3 / 4;
+      const fl = Math.max(0, 1 - (now - oars.flash[side > 0 ? 1 : 0]) / 300);
+      const o = [...oars.ptrs.values()].find((q) => q.side === side);
+      const y = o ? o.y : H * 0.3;
+      g.fillStyle = `rgba(32,211,155,${0.08 + fl * 0.35})`; g.fillRect(side < 0 ? 0 : W / 2, 0, W / 2, H);
+      // Remo: palo y pala que siguen al dedo
+      g.lineCap = 'round'; g.lineWidth = 10; g.strokeStyle = '#b07a45';
+      g.beginPath(); g.moveTo(cx, y - 90); g.lineTo(cx, y + 30); g.stroke();
+      g.fillStyle = o ? me : '#555'; g.beginPath(); g.ellipse(cx, y + 60, 26, 46, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.35)'; g.font = '900 40px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText('⬇', cx, H * 0.88);
+    }
+  } else if (pad.ctl === 'bid') {
+    const m = 30, max = practicing ? 100 : (pad.cfg.max || 0);
+    const k = max ? bid.v / max : 0;
+    g.fillStyle = 'rgba(255,255,255,.07)'; g.beginPath(); g.roundRect(m, H * 0.62, W - m * 2, 26, 13); g.fill();
+    g.fillStyle = on ? '#ffc23d' : '#666'; g.beginPath(); g.roundRect(m, H * 0.62, Math.max(26, (W - m * 2) * k), 26, 13); g.fill();
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(m + (W - m * 2) * k, H * 0.62 + 13, 22, 0, Math.PI * 2); g.fill();
+    g.font = '900 72px system-ui'; g.fillStyle = on ? '#fff' : '#888'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('$' + bid.v, W / 2, H * 0.38);
+    g.font = '800 18px system-ui'; g.fillStyle = '#8f97bb';
+    if (pad.cfg.item && !practicing) g.fillText(pad.cfg.item, W / 2, H * 0.18);
+    g.fillText(`Tenés $${max}`, W / 2, H * 0.78);
+  } else if (pad.ctl === 'swipe') {
+    // Arco arriba, pelota abajo; se ve el recorrido del dedo
+    const bx = W / 2, by = H * 0.82;
+    g.strokeStyle = 'rgba(255,255,255,.3)'; g.lineWidth = 4; g.strokeRect(W * 0.2, H * 0.06, W * 0.6, H * 0.12);
+    const P = swipe.path || (swipe.last && now - swipe.last.t < 1500 ? swipe.last.P : null);
+    if (P && P.length > 1) {
+      g.strokeStyle = me; g.lineWidth = 8; g.lineCap = g.lineJoin = 'round';
+      g.beginPath(); P.forEach((q, i) => (i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y))); g.stroke();
+    }
+    g.font = '64px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.globalAlpha = on ? 1 : 0.4;
+    g.fillText('⚽', bx, by); g.globalAlpha = 1;
+    if (swipe.last && now - swipe.last.t < 1500) {
+      g.font = '800 18px system-ui'; g.fillStyle = '#fff';
+      g.fillText(`Fuerza ${Math.round(swipe.last.pow * 100)}% · comba ${swipe.last.curve > 0.15 ? '↪' : swipe.last.curve < -0.15 ? '↩' : 'recta'}`, W / 2, H * 0.5);
     }
   }
 }

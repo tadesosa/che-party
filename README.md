@@ -97,11 +97,11 @@ El kiosco no tiene todo siempre: ofrece cuatro ítems al azar más el remís.
 | ☂️ Paraguas | 5 | Se usa solo: te cubre del próximo robo, chancleta, bache o impuesto al que va primero |
 | 🚕 Remís | 50 | Te lleva directo a la Copa |
 
-## Minijuegos (92)
+## Minijuegos (96)
 
 Cada tablero tiene sus propios minijuegos, que solo salen ahí (y salen más seguido); los demás salen en cualquier tablero. En el modo **Solo minijuegos** se pueden elegir todos.
 
-### En todos los tableros (42)
+### En todos los tableros (46)
 
 | Minijuego | De qué se trata | Modo | Control en el celu |
 |---|---|---|---|
@@ -147,6 +147,10 @@ Cada tablero tiene sus propios minijuegos, que solo salen ahí (y salen más seg
 | **Tejo del Fichín** | Tejo de aire con un arco por jugador alrededor de la mesa. Tu paleta va justo adonde está el dedo; si te hacen un gol, perdés una vida. | todos / duelo | ↔️ deslizador (posición exacta) |
 | **Revolvé el Dulce de Leche** | Girá el dedo en círculos para revolver: ni muy lento (se pega) ni muy rápido (salpica), y cambiá el sentido cuando grita la abuela. | todos / duelo | 🔄 girar el dedo en círculos |
 | **Dibujito en el Pizarrón** | Por turnos uno dibuja una palabra secreta con el dedo y sale con tiza en la tele; los demás eligen qué es entre seis. | todos / duelo | ✏️ dibujar / elegir la respuesta |
+| **Twister de Dedos** | Con el celu apoyado, un dedo en cada círculo de color. Van apareciendo más (y a veces uno cambia de lugar); si soltás uno, te resbalás. | todos / duelo | ☝️ varios dedos a la vez |
+| **Remando en el Tigre** | Carrera de canoas por un río del Delta que dobla. Cada pulgar es un remo: remar de un lado te hace doblar para el otro. | todos / duelo | 🚣 dos pulgares (deslizar para abajo) |
+| **Remate en la Feria** | Con $100, ofertás en secreto por cosas que "valen entre tanto y tanto"… pero algunas son truchas y otras una joya. Gana el que suma más. | todos / duelo | 💰 deslizar la oferta y confirmar |
+| **Tiro Libre con Comba** | Deslizás para patear: la dirección, la fuerza y la curva del dedo (la comba) para pasar la barrera y al arquero. | todos / duelo | ⚽ deslizar con curva |
 
 ### Solo en Buenos Aires (10)
 
@@ -252,7 +256,7 @@ Verlos de cerca: `http://localhost:3000/personajes.html` (o solo algunos: `perso
 
 - `npm start` levanta el servidor. `npm run exe` arma `dist/CheParty.exe`.
 - `LP_MINIGAME=penales,tango npm start` fuerza esos minijuegos en orden (los de equipos arman los equipos solos). `LP_SKIP_BOARD=1` salta los turnos del tablero.
-- Pruebas: `node test/minijuegos.js` (los 92 minijuegos en todos sus modos), `node test/escenas.mjs` (arma la escena 3D de cada minijuego sin navegador y la hace correr con una partida de bots) y la partida completa acelerada:
+- Pruebas: `node test/minijuegos.js` (los 96 minijuegos en todos sus modos), `node test/escenas.mjs` (arma la escena 3D de cada minijuego sin navegador y la hace correr con una partida de bots) y la partida completa acelerada:
   `LP_SPEED=10 PORT=3001 node server.js` y en otra terminal `BOARD=mendoza MODE=rondas PORT=3001 node test/partida.js`.
 - `/tv#vista` muestra el mapa entero desde arriba (para revisar el tablero).
 - `LP_NEWS=1` hace que haya noticia en todas las rondas y `LP_NEWS_KEY=revoleo` fuerza una noticia en particular.

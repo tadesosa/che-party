@@ -107,8 +107,12 @@ import bochas from './mg/bochas.js';
 import fichin from './mg/fichin.js';
 import dulce from './mg/dulce.js';
 import pizarron from './mg/pizarron.js';
+import twister from './mg/twister.js';
+import remo from './mg/remo.js';
+import remate from './mg/remate.js';
+import tirolibre from './mg/tirolibre.js';
 
-const SCENES = { sumo, globo, alfajores, penales, carrera, sillas, asado, cruce, tango, pelota, empanadas, matecaliente, glaciar, bolita, cinchada, mancha, picadito, desenfunde, cebada, taba, sortija, billete, embolsados, bombuchas, fila, espuma, lazo, rayuela, truco, choripan, payada, murga, baldosa, futtenis, pato, metegol, escondida, cortedeluz, feria, muzza, timbre, obelisco, palomas, subte, fileteado, caminito, delivery, hinchada, pisada, corchos, barricas, mulas, carroza, cosecha, zondaviento, aconcagua, rafting, granizo, castillo, barrenador, tejo, pesca, paleta, churros, lobos, sombrilla, aguavivas, gaviotas, ski, chocolate, nieve, bolanieve, aerosilla, ovnis, jineteada, dique, parapente, abduccion, pinguinos, tobogan, tren, centolla, iglu, vizcachas, nubes, repulgue, ofrenda, bombo, bochas, fichin, dulce, pizarron };
+const SCENES = { sumo, globo, alfajores, penales, carrera, sillas, asado, cruce, tango, pelota, empanadas, matecaliente, glaciar, bolita, cinchada, mancha, picadito, desenfunde, cebada, taba, sortija, billete, embolsados, bombuchas, fila, espuma, lazo, rayuela, truco, choripan, payada, murga, baldosa, futtenis, pato, metegol, escondida, cortedeluz, feria, muzza, timbre, obelisco, palomas, subte, fileteado, caminito, delivery, hinchada, pisada, corchos, barricas, mulas, carroza, cosecha, zondaviento, aconcagua, rafting, granizo, castillo, barrenador, tejo, pesca, paleta, churros, lobos, sombrilla, aguavivas, gaviotas, ski, chocolate, nieve, bolanieve, aerosilla, ovnis, jineteada, dique, parapente, abduccion, pinguinos, tobogan, tren, centolla, iglu, vizcachas, nubes, repulgue, ofrenda, bombo, bochas, fichin, dulce, pizarron, twister, remo, remate, tirolibre };
 const $ = (id) => document.getElementById(id);
 const BOARD_PHASES = ['intro', 'order', 'turn', 'rolling', 'moving', 'path', 'copa', 'land', 'shop', 'item', 'duelAsk', 'bonus', 'copaMove', 'news', 'gift'];
 const TEAM_COLORS = ['#2f86e0', '#e14b3c'];
@@ -852,6 +856,10 @@ function renderHud() {
       slider: '📱 En el celu: deslizá el dedo (la paleta va adonde está el dedo)',
       crank: '📱 En el celu: girá el dedo en círculos',
       draw: '📱 En el celu: dibujá con el dedo o elegí la respuesta',
+      fingers: '📱 En el celu: un dedo en cada círculo (varios a la vez)',
+      oars: '📱 En el celu: los dos pulgares son los remos',
+      bid: '📱 En el celu: deslizá para ofrecer y confirmá',
+      swipe: '📱 En el celu: deslizá para arriba con comba',
     }[S.mg.control] || '';
     const mgPlayers = S.players.filter((p) => S.mg.players.includes(p.id));
     const chip = (p) => `<span class="${S.mg.ready.includes(p.id) ? 'on' : ''}" style="background:${CH[p.char].color}" title="${esc(p.name)}">${faceImg(p)}</span>`;

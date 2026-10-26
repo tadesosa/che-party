@@ -95,6 +95,10 @@ const LIST = {
   fichin: require('./fichin'),
   dulce: require('./dulce'),
   pizarron: require('./pizarron'),
+  twister: require('./twister'),
+  remo: require('./remo'),
+  remate: require('./remate'),
+  tirolibre: require('./tirolibre'),
 };
 
 // Modos de los minijuegos que ya existían

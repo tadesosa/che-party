@@ -137,6 +137,10 @@ const CONTROL_TEXT = {
   slider: '↔️ Deslizá el dedo: tu paleta va justo donde está el dedo',
   crank: '🔄 Girá el dedo en círculos sobre la pantalla',
   draw: '✏️ Dibujá con el dedo (o elegí la respuesta)',
+  fingers: '☝️ Varios dedos a la vez: uno en cada círculo',
+  oars: '🚣 Los dos pulgares: deslizá para abajo para remar',
+  bid: '💰 Deslizá para elegir cuánto ofrecés y confirmá',
+  swipe: '⚽ Deslizá para arriba: la curva del dedo es la comba',
 };
 
 function render() {
